@@ -1,0 +1,128 @@
+.shop-panel {
+    --shop-width: 33.333%;
+    --shop-min-width: 280px;
+    /* Leaves room for the shop button and coin counter in the top-left corner */
+    --shop-top-space: 80px;
+    --slide-duration: 0.4s;
+
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    width: var(--shop-width);
+    min-width: var(--shop-min-width);
+    max-width: 100%;
+    padding-top: var(--shop-top-space);
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border-right: 2px solid var(--ui-border);
+    border-radius: 0 16px 16px 0;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    /* Extra offset keeps the shadow from peeking in while closed */
+    transform: translateX(calc(-100% - 24px));
+    transition: transform var(--slide-duration) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shop-panel.is-open {
+    transform: translateX(0);
+}
+
+.shop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px 8px;
+}
+
+.shop-title {
+    margin: 0;
+    font-size: 20px;
+}
+
+.shop-close-button {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    color: var(--ui-text);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.shop-close-button:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+.shop-item-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 12px;
+    padding: 8px 16px 16px;
+    overflow-y: auto;
+    /* Scrollable, but with the scrollbar hidden */
+    scrollbar-width: none;
+}
+
+.shop-item-grid::-webkit-scrollbar {
+    display: none;
+}
+
+.shop-item-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 12px;
+    color: var(--ui-text);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+
+.shop-item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--ui-shadow);
+}
+
+.shop-item-image {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+}
+
+.shop-item-name {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.shop-item-price {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.shop-item-price img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.shop-item-card.is-unaffordable .shop-item-price {
+    color: var(--ui-danger);
+}

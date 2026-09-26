@@ -1,0 +1,98 @@
+.bottom-panel {
+    --panel-background: var(--ui-background);
+    --panel-border: var(--ui-border);
+    --panel-text: var(--ui-text);
+    --tab-width: 120px;
+    --tab-height: 40px;
+    --slide-duration: 0.45s;
+
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--panel-background);
+    border-top: 2px solid var(--panel-border);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+    color: var(--panel-text);
+    font-family: var(--ui-font);
+    transform: translateY(100%);
+    transition: transform var(--slide-duration) cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bottom-panel.is-open {
+    transform: translateY(0);
+}
+
+.bottom-panel-tab {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: var(--tab-width);
+    height: var(--tab-height);
+    margin-bottom: -2px;
+    transform: translateX(-50%);
+    background: var(--panel-background);
+    border: 2px solid var(--panel-border);
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    color: var(--panel-text);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.bottom-panel-tab:hover {
+    filter: brightness(0.96);
+}
+
+.bottom-panel-content {
+    height: 100%;
+    box-sizing: border-box;
+    padding: 18px 24px 16px;
+    /* Lets the sections size things from the panel's height with cqh units (e.g. the progress ring) */
+    container-type: size;
+}
+
+.bottom-panel-layout {
+    display: grid;
+    /* Equal side columns keep the middle section centered on screen */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 32px;
+    height: 100%;
+}
+
+.bottom-panel-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.bottom-panel-section.is-center {
+    align-items: center;
+}
+
+/* Shared style for section titles, like "To-do list" */
+.bottom-panel-heading {
+    margin: 0 0 10px;
+    color: var(--ui-text-muted);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* On narrow screens the empty right column is dropped so the to-do list gets the room */
+@container (max-width: 640px) {
+    .bottom-panel-layout {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 20px;
+    }
+
+    .bottom-panel-section:empty {
+        display: none;
+    }
+}

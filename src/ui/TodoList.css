@@ -1,0 +1,293 @@
+.todo-list {
+    --todo-max-width: 480px;
+    --todo-checkbox-size: 22px;
+    --todo-row-padding-y: 7px;
+    /* Width of the strip at each task's right end that shows the trash button when hovered */
+    --todo-delete-zone-width: 44px;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: var(--todo-max-width);
+    height: 100%;
+    min-height: 0;
+}
+
+.todo-list-items {
+    --scroll-fade-size: 24px;
+
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    padding: 2px 2px 0;
+    overflow-y: auto;
+    /* Scrollable, but with the scrollbar hidden */
+    scrollbar-width: none;
+}
+
+.todo-list-items::-webkit-scrollbar {
+    display: none;
+}
+
+/* Fades whichever edge the list can still scroll toward */
+.todo-list-items.can-scroll-down {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-fade-size)), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - var(--scroll-fade-size)), transparent);
+}
+
+.todo-list-items.can-scroll-up {
+    -webkit-mask-image: linear-gradient(to top, #000 calc(100% - var(--scroll-fade-size)), transparent);
+    mask-image: linear-gradient(to top, #000 calc(100% - var(--scroll-fade-size)), transparent);
+}
+
+.todo-list-items.can-scroll-up.can-scroll-down {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--scroll-fade-size), #000 calc(100% - var(--scroll-fade-size)), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 var(--scroll-fade-size), #000 calc(100% - var(--scroll-fade-size)), transparent);
+}
+
+.todo-list-message {
+    margin: 0;
+    padding: 12px 4px;
+    color: var(--ui-text-muted);
+    font-size: 14px;
+}
+
+.todo-list-divider {
+    margin: 12px 2px 8px;
+    color: var(--ui-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+/* --- Task rows --- */
+
+.todo-task {
+    position: relative;
+    /* Keeps the flash (::before) above the row's background but under its content */
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: var(--todo-checkbox-size) minmax(0, 1fr) auto var(--todo-delete-zone-width);
+    align-items: center;
+    column-gap: 10px;
+    margin-bottom: 6px;
+    padding: var(--todo-row-padding-y) 0 var(--todo-row-padding-y) 10px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+}
+
+.todo-task.is-animating {
+    pointer-events: none;
+}
+
+/* Flash of the task's color when it's added or checked off */
+.todo-task::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--task-color);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.todo-task.is-flashing::before {
+    animation: todo-task-flash 0.8s ease-out;
+}
+
+@keyframes todo-task-flash {
+    0% { opacity: 0; }
+    20% { opacity: 0.22; }
+    100% { opacity: 0; }
+}
+
+/* Checkbox outlined in the task type's color, filled with it once checked */
+.todo-task-checkbox {
+    display: grid;
+    place-items: center;
+    width: var(--todo-checkbox-size);
+    height: var(--todo-checkbox-size);
+    padding: 0;
+    box-sizing: border-box;
+    background: var(--ui-surface);
+    border: 2.5px solid var(--task-color);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background-color 0.15s ease-out;
+}
+
+.todo-task-checkbox:hover {
+    background: color-mix(in srgb, var(--task-color) 18%, var(--ui-surface));
+}
+
+.todo-task-checkmark {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 16;
+    stroke-dashoffset: 16;
+    transition: stroke-dashoffset 0.25s ease-out 0.08s;
+}
+
+.todo-task.is-completed .todo-task-checkbox {
+    background: var(--task-color);
+}
+
+.todo-task.is-completed .todo-task-checkmark {
+    stroke-dashoffset: 0;
+}
+
+.todo-task-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.todo-task-name {
+    position: relative;
+    align-self: flex-start;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    transition: color 0.3s;
+}
+
+/* Strike-through that draws across the name when the task is checked off */
+.todo-task-name::after {
+    content: '';
+    position: absolute;
+    top: 52%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.3s ease-out 0.12s;
+}
+
+.todo-task.is-completed .todo-task-name {
+    color: var(--ui-text-muted);
+}
+
+.todo-task.is-completed .todo-task-name::after {
+    transform: scaleX(1);
+}
+
+.todo-task-details {
+    overflow: hidden;
+    color: var(--ui-text-muted);
+    font-size: 11.5px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.todo-task-importance {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+/* Reaches the row's full height, so hovering anywhere at its right end counts */
+.todo-task-delete-zone {
+    align-self: stretch;
+    display: grid;
+    place-items: center;
+    margin: calc(var(--todo-row-padding-y) * -1) 0;
+}
+
+.todo-task-delete {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateX(6px) scale(0.85);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out, background-color 0.15s;
+}
+
+.todo-task-delete-zone:hover .todo-task-delete,
+.todo-task-delete:focus-visible {
+    opacity: 1;
+    transform: none;
+}
+
+.todo-task-delete:hover {
+    background: rgba(176, 74, 58, 0.12);
+}
+
+.todo-task-delete-icon {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.todo-list-particle {
+    position: absolute;
+    z-index: 2;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* --- Buttons under the list --- */
+
+.todo-list-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+}
+
+.todo-list-button {
+    padding: 6px 12px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 999px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.12s ease-out, background-color 0.15s, border-color 0.15s;
+}
+
+.todo-list-button:hover {
+    filter: brightness(0.96);
+}
+
+.todo-list-button:active {
+    transform: scale(0.96);
+}
+
+/* "Show all tasks" while it's switched on */
+.todo-list-button[aria-pressed="true"] {
+    background: var(--ui-accent-soft);
+    border-color: var(--ui-accent);
+}
+
+.todo-list-button.is-primary {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: #ffffff;
+}

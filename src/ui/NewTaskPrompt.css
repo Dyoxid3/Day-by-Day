@@ -1,0 +1,273 @@
+.task-prompt-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    opacity: 0;
+    visibility: hidden;
+    /* Hides only once it has faded out */
+    transition: opacity 0.15s, visibility 0s 0.15s;
+}
+
+.task-prompt-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+    /* Shows at once, so the name field can take focus straight away */
+    transition: opacity 0.15s;
+}
+
+.task-prompt {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(360px, calc(100% - 32px));
+    max-height: calc(100% - 32px);
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95);
+    transition: transform 0.15s ease-out;
+    scrollbar-width: none;
+}
+
+.task-prompt::-webkit-scrollbar {
+    display: none;
+}
+
+.task-prompt:focus {
+    outline: none;
+}
+
+.task-prompt-overlay.is-open .task-prompt {
+    transform: scale(1);
+}
+
+.task-prompt-title {
+    margin: 0;
+    font-size: 18px;
+}
+
+.task-prompt-field {
+    display: block;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.task-prompt-label {
+    display: block;
+    margin-bottom: 6px;
+    padding: 0;
+    color: var(--ui-text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.task-prompt-input {
+    width: 100%;
+    padding: 8px 10px;
+    box-sizing: border-box;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 10px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 14px;
+}
+
+.task-prompt-input:focus {
+    outline: none;
+    border-color: var(--ui-accent);
+}
+
+/* --- Pill choices (type and importance) --- */
+
+.task-prompt-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Equal-width pills in one row */
+.task-prompt-options.is-even {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+}
+
+.task-prompt-choice {
+    position: relative;
+    display: flex;
+    cursor: pointer;
+}
+
+/* The real inputs stay usable by keyboard and screen readers; only the pills and switch show */
+.task-prompt-choice input,
+.task-prompt-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.task-prompt-choice span {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.task-prompt-choice:hover span {
+    border-color: var(--ui-accent);
+}
+
+.task-prompt-choice input:checked + span {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: #ffffff;
+}
+
+/* Type pills use their type's color, with a dot to show it before they're picked */
+.task-prompt-choice.is-type span::before {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--task-color);
+}
+
+.task-prompt-choice.is-type:hover span {
+    border-color: var(--task-color);
+}
+
+.task-prompt-choice.is-type input:checked + span {
+    background: var(--task-color);
+    border-color: var(--task-color);
+}
+
+.task-prompt-choice.is-type input:checked + span::before {
+    background: #ffffff;
+}
+
+.task-prompt-choice input:focus-visible + span,
+.task-prompt-switch input:focus-visible + .task-prompt-switch-track {
+    outline: 2px solid var(--ui-text);
+    outline-offset: 2px;
+}
+
+/* --- Set a time --- */
+
+.task-prompt-time-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.task-prompt-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.task-prompt-switch-track {
+    position: relative;
+    flex-shrink: 0;
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    background: var(--ui-border);
+    transition: background-color 0.15s;
+}
+
+.task-prompt-switch-track::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease-out;
+}
+
+.task-prompt-switch input:checked + .task-prompt-switch-track {
+    background: var(--ui-accent);
+}
+
+.task-prompt-switch input:checked + .task-prompt-switch-track::after {
+    transform: translateX(16px);
+}
+
+.task-prompt-time {
+    width: auto;
+    transition: opacity 0.15s;
+}
+
+/* Hidden but still taking up its space, so the menu doesn't jump when the switch is flipped */
+.task-prompt-time:disabled {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s, visibility 0s 0.15s;
+}
+
+/* --- Buttons --- */
+
+.task-prompt-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.task-prompt-button {
+    padding: 9px 16px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 10px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.task-prompt-button:hover {
+    filter: brightness(0.96);
+}
+
+.task-prompt-button.is-primary {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: #ffffff;
+}
+
+.task-prompt-button.is-subtle {
+    background: transparent;
+    border-color: transparent;
+    font-weight: 500;
+}

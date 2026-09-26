@@ -1,0 +1,52 @@
+.progress-ring {
+    --ring-track-color: #efe4d3;
+    /* The ring grows with the panel's height, staying between these sizes */
+    --ring-min-size: 110px;
+    --ring-max-size: 230px;
+    /* Height kept free for the heading above the ring */
+    --ring-heading-space: 36px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.progress-ring-graphic {
+    /* 100cqh is the bottom panel's content height */
+    width: clamp(var(--ring-min-size), calc(100cqh - var(--ring-heading-space)), var(--ring-max-size));
+    height: auto;
+    aspect-ratio: 1;
+    overflow: visible;
+    transition: filter 0.4s;
+}
+
+.progress-ring-track,
+.progress-ring-section {
+    fill: none;
+}
+
+.progress-ring-track {
+    stroke: var(--ring-track-color);
+}
+
+/* Sizes here are in the ring's own units, so the text scales with the ring */
+.progress-ring-percent {
+    fill: var(--ui-text);
+    font-family: var(--ui-font);
+    font-size: 28px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-anchor: middle;
+}
+
+.progress-ring-percent-sign {
+    fill: var(--ui-text-muted);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* Soft glow once every task for the day is done */
+.progress-ring.is-complete .progress-ring-graphic {
+    filter: drop-shadow(0 0 10px rgba(232, 163, 61, 0.55));
+}

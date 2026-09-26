@@ -1,0 +1,363 @@
+import { Scene, GameObjects, Geom, Input, Scale, Scenes, Math as PhaserMath } from 'phaser';
+
+// Speeds are the fraction of the remaining distance covered each frame (at 60fps): higher = snappier
+const cameraSettings = {
+    // Default view zoom, unless the framed area needs a smaller zoom to fit in the visible screen
+    defaultZoom: 1,
+    // Screen px kept around the framed area when zooming out to fit it
+    defaultViewPadding: 30,
+    // Min zoom and the keep-view threshold are multiples of the current default zoom
+    minZoomFactor: 0.85,
+    keepViewZoomFactor: 1.5,
+    maxZoom: 5,
+    wheelZoomSpeed: 0.001,
+    zoomSmoothSpeed: 0.12,
+    // How far past the framed area's edges the visible area may pan, in world px
+    panMargin: 350,
+    returnSpeed: 0.07,
+    // Pointer must move this far (px) before a press counts as a drag rather than a click
+    dragThreshold: 4,
+    focusZoom: 2.5,
+    focusFollowSpeed: 0.08,
+    doubleClickMs: 300
+};
+
+export class IslandCameraController
+{
+    private scene: Scene;
+    private camera: Phaser.Cameras.Scene2D.Camera;
+    private cat: GameObjects.Sprite;
+    private framedArea: Phaser.Geom.Rectangle;
+    private panLimits: Phaser.Geom.Rectangle;
+    private coveredLeftFraction = 0;
+    private coveredBottomFraction = 0;
+    private targetZoom = cameraSettings.defaultZoom;
+    private isInteractionEnabled = true;
+    private isFocusedOnCat = false;
+    private isReturningToDefault = false;
+    private isDragging = false;
+    private dragDistance = 0;
+    private lastCatClickTime = 0;
+    private zoomAnchorX = 0;
+    private zoomAnchorY = 0;
+
+    constructor (scene: Scene, cat: GameObjects.Sprite, framedArea: Phaser.Geom.Rectangle)
+    {
+        this.scene = scene;
+        this.camera = scene.cameras.main;
+        this.cat = cat;
+        this.framedArea = framedArea;
+
+        const margin = cameraSettings.panMargin;
+
+        this.panLimits = new Geom.Rectangle(
+            framedArea.x - margin,
+            framedArea.y - margin,
+            framedArea.width + margin * 2,
+            framedArea.height + margin * 2
+        );
+
+        this.targetZoom = this.GetDefaultZoom();
+        this.camera.setZoom(this.targetZoom);
+        this.SnapToDefaultView();
+
+        cat.setInteractive({ useHandCursor: true });
+        cat.on(Input.Events.GAMEOBJECT_POINTER_DOWN, this.HandleCatClick, this);
+
+        scene.input.on(Input.Events.POINTER_DOWN, this.HandlePointerDown, this);
+        scene.input.on(Input.Events.POINTER_MOVE, this.HandlePointerMove, this);
+        scene.input.on(Input.Events.POINTER_UP, this.HandlePointerUp, this);
+        scene.input.on(Input.Events.POINTER_UP_OUTSIDE, this.HandlePointerUp, this);
+        scene.input.on(Input.Events.POINTER_WHEEL, this.HandleWheel, this);
+        scene.scale.on(Scale.Events.RESIZE, this.HandleScreenResize, this);
+        scene.events.on(Scenes.Events.UPDATE, this.HandleUpdate, this);
+        scene.events.once(Scenes.Events.SHUTDOWN, this.Destroy, this);
+    }
+
+    FocusOnCat ()
+    {
+        this.isFocusedOnCat = true;
+        this.isReturningToDefault = false;
+        this.isDragging = false;
+        this.targetZoom = cameraSettings.focusZoom;
+    }
+
+    ReturnToDefaultView ()
+    {
+        this.isFocusedOnCat = false;
+        this.isReturningToDefault = true;
+        this.targetZoom = this.GetDefaultZoom();
+    }
+
+    // Call when UI covers part of the screen, so the camera frames things in the part still visible
+    SetScreenInsets (leftFraction: number, bottomFraction: number)
+    {
+        this.coveredLeftFraction = PhaserMath.Clamp(leftFraction, 0, 1);
+        this.coveredBottomFraction = PhaserMath.Clamp(bottomFraction, 0, 1);
+
+        if (!this.isFocusedOnCat)
+        {
+            this.ReturnToDefaultView();
+        }
+    }
+
+    // Turns drag-panning and double-click-to-focus on or off (scroll zoom always works)
+    SetInteractionEnabled (isEnabled: boolean)
+    {
+        this.isInteractionEnabled = isEnabled;
+
+        if (!isEnabled)
+        {
+            this.isDragging = false;
+
+            if (this.isFocusedOnCat)
+            {
+                this.ReturnToDefaultView();
+            }
+        }
+    }
+
+    private HandleScreenResize ()
+    {
+        if (!this.isFocusedOnCat && !this.isDragging)
+        {
+            this.ReturnToDefaultView();
+        }
+    }
+
+    // The part of the screen not covered by UI, in game-screen coordinates
+    private GetVisibleScreenRect ()
+    {
+        const x = this.camera.width * this.coveredLeftFraction;
+
+        return {
+            x,
+            y: 0,
+            width: this.camera.width - x,
+            height: this.camera.height * (1 - this.coveredBottomFraction)
+        };
+    }
+
+    private GetDefaultZoom (): number
+    {
+        const visibleRect = this.GetVisibleScreenRect();
+        const padding = cameraSettings.defaultViewPadding * 2;
+        const fitZoomX = (visibleRect.width - padding) / this.framedArea.width;
+        const fitZoomY = (visibleRect.height - padding) / this.framedArea.height;
+
+        return Math.min(cameraSettings.defaultZoom, fitZoomX, fitZoomY);
+    }
+
+    // Scroll that puts a world point at the center of the visible screen area, at the given zoom
+    private GetScrollToShowAtVisibleCenter (worldX: number, worldY: number, zoom: number)
+    {
+        const visibleRect = this.GetVisibleScreenRect();
+        const screenX = visibleRect.x + visibleRect.width / 2;
+        const screenY = visibleRect.y + visibleRect.height / 2;
+
+        return {
+            x: worldX - this.camera.width / 2 - (screenX - this.camera.width / 2) / zoom,
+            y: worldY - this.camera.height / 2 - (screenY - this.camera.height / 2) / zoom
+        };
+    }
+
+    private SnapToDefaultView ()
+    {
+        const scroll = this.GetScrollToShowAtVisibleCenter(this.framedArea.centerX, this.framedArea.centerY, this.camera.zoom);
+
+        this.camera.setScroll(scroll.x, scroll.y);
+    }
+
+    private HandleCatClick ()
+    {
+        if (!this.isInteractionEnabled)
+        {
+            return;
+        }
+
+        const now = this.scene.time.now;
+
+        if (now - this.lastCatClickTime <= cameraSettings.doubleClickMs)
+        {
+            this.lastCatClickTime = 0;
+            this.FocusOnCat();
+        }
+        else
+        {
+            this.lastCatClickTime = now;
+        }
+    }
+
+    private HandlePointerDown (_pointer: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[])
+    {
+        if (!this.isInteractionEnabled)
+        {
+            return;
+        }
+
+        if (this.isFocusedOnCat)
+        {
+            if (!currentlyOver.includes(this.cat))
+            {
+                this.ReturnToDefaultView();
+            }
+            return;
+        }
+
+        // Grabbing mid-return freezes the camera where it is so the drag continues from there
+        this.isReturningToDefault = false;
+        this.targetZoom = this.camera.zoom;
+        this.isDragging = true;
+        this.dragDistance = 0;
+    }
+
+    private HandlePointerMove (pointer: Phaser.Input.Pointer)
+    {
+        if (!this.isDragging || !pointer.isDown)
+        {
+            return;
+        }
+
+        const deltaX = pointer.x - pointer.prevPosition.x;
+        const deltaY = pointer.y - pointer.prevPosition.y;
+
+        this.dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
+        this.camera.scrollX -= deltaX / this.camera.zoom;
+        this.camera.scrollY -= deltaY / this.camera.zoom;
+    }
+
+    private HandlePointerUp ()
+    {
+        if (!this.isDragging)
+        {
+            return;
+        }
+
+        this.isDragging = false;
+
+        const keepViewZoom = this.GetDefaultZoom() * cameraSettings.keepViewZoomFactor;
+
+        if (this.dragDistance >= cameraSettings.dragThreshold && this.camera.zoom < keepViewZoom)
+        {
+            this.ReturnToDefaultView();
+        }
+    }
+
+    private HandleWheel (pointer: Phaser.Input.Pointer, _currentlyOver: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number)
+    {
+        if (this.isFocusedOnCat)
+        {
+            return;
+        }
+
+        this.isReturningToDefault = false;
+        this.zoomAnchorX = pointer.x;
+        this.zoomAnchorY = pointer.y;
+
+        const newZoom = this.targetZoom * (1 - deltaY * cameraSettings.wheelZoomSpeed);
+        const minZoom = this.GetDefaultZoom() * cameraSettings.minZoomFactor;
+
+        this.targetZoom = PhaserMath.Clamp(newZoom, minZoom, cameraSettings.maxZoom);
+    }
+
+    private HandleUpdate (_time: number, delta: number)
+    {
+        const previousZoom = this.camera.zoom;
+        const nextZoom = EaseToward(previousZoom, this.targetZoom, cameraSettings.zoomSmoothSpeed, delta);
+
+        this.camera.setZoom(nextZoom);
+
+        if (this.isFocusedOnCat)
+        {
+            this.EaseScrollToShow(this.cat.x, this.cat.y, cameraSettings.focusFollowSpeed, delta);
+        }
+        else if (this.isReturningToDefault)
+        {
+            const target = this.EaseScrollToShow(this.framedArea.centerX, this.framedArea.centerY, cameraSettings.returnSpeed, delta);
+            const hasArrived = Math.abs(this.camera.scrollX - target.x) < 0.5
+                && Math.abs(this.camera.scrollY - target.y) < 0.5
+                && Math.abs(this.camera.zoom - this.targetZoom) < 0.001;
+
+            if (hasArrived)
+            {
+                this.camera.setZoom(this.targetZoom);
+                this.SnapToDefaultView();
+                this.isReturningToDefault = false;
+            }
+        }
+        else
+        {
+            this.KeepAnchorFixedWhileZooming(previousZoom, nextZoom);
+        }
+
+        this.ClampVisibleAreaToPanLimits();
+    }
+
+    private EaseScrollToShow (worldX: number, worldY: number, speed: number, delta: number)
+    {
+        const target = this.GetScrollToShowAtVisibleCenter(worldX, worldY, this.camera.zoom);
+
+        this.camera.scrollX = EaseToward(this.camera.scrollX, target.x, speed, delta);
+        this.camera.scrollY = EaseToward(this.camera.scrollY, target.y, speed, delta);
+
+        return target;
+    }
+
+    // Shifts scroll so the world point under the zoom anchor stays under it as zoom changes
+    private KeepAnchorFixedWhileZooming (previousZoom: number, nextZoom: number)
+    {
+        const offsetFromCenterX = this.zoomAnchorX - this.camera.width / 2;
+        const offsetFromCenterY = this.zoomAnchorY - this.camera.height / 2;
+        const zoomChange = 1 / previousZoom - 1 / nextZoom;
+
+        this.camera.scrollX += offsetFromCenterX * zoomChange;
+        this.camera.scrollY += offsetFromCenterY * zoomChange;
+    }
+
+    // Keeps the uncovered part of the screen inside the pan limits (centered if it's larger than them)
+    private ClampVisibleAreaToPanLimits ()
+    {
+        const zoom = this.camera.zoom;
+        const visibleRect = this.GetVisibleScreenRect();
+        const visibleLeft = this.camera.scrollX + this.camera.width / 2 + (visibleRect.x - this.camera.width / 2) / zoom;
+        const visibleTop = this.camera.scrollY + this.camera.height / 2 + (visibleRect.y - this.camera.height / 2) / zoom;
+        const visibleWidth = visibleRect.width / zoom;
+        const visibleHeight = visibleRect.height / zoom;
+
+        const clampedLeft = ClampSpan(visibleLeft, visibleWidth, this.panLimits.left, this.panLimits.right);
+        const clampedTop = ClampSpan(visibleTop, visibleHeight, this.panLimits.top, this.panLimits.bottom);
+
+        this.camera.scrollX += clampedLeft - visibleLeft;
+        this.camera.scrollY += clampedTop - visibleTop;
+    }
+
+    private Destroy ()
+    {
+        this.scene.input.off(Input.Events.POINTER_DOWN, this.HandlePointerDown, this);
+        this.scene.input.off(Input.Events.POINTER_MOVE, this.HandlePointerMove, this);
+        this.scene.input.off(Input.Events.POINTER_UP, this.HandlePointerUp, this);
+        this.scene.input.off(Input.Events.POINTER_UP_OUTSIDE, this.HandlePointerUp, this);
+        this.scene.input.off(Input.Events.POINTER_WHEEL, this.HandleWheel, this);
+        this.scene.scale.off(Scale.Events.RESIZE, this.HandleScreenResize, this);
+        this.scene.events.off(Scenes.Events.UPDATE, this.HandleUpdate, this);
+    }
+}
+
+// Frame-rate independent exponential ease: moves `speed` of the remaining gap per 60fps frame
+function EaseToward (current: number, target: number, speed: number, delta: number): number
+{
+    const amount = 1 - Math.pow(1 - speed, delta / (1000 / 60));
+
+    return current + (target - current) * amount;
+}
+
+// Keeps a span [start, start + size] inside [min, max], centering it if it doesn't fit
+function ClampSpan (start: number, size: number, min: number, max: number): number
+{
+    if (size >= max - min)
+    {
+        return (min + max) / 2 - size / 2;
+    }
+
+    return PhaserMath.Clamp(start, min, max - size);
+}

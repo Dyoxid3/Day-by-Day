@@ -1,0 +1,13 @@
+/* Shared look for all HTML UI; change these to restyle every panel at once */
+:root {
+    --ui-background: #fdf8f0;
+    --ui-surface: #ffffff;
+    --ui-border: #e2d6c3;
+    --ui-text: #3a3226;
+    --ui-text-muted: #8c7f6c;
+    --ui-accent: #e8a33d;
+    --ui-accent-soft: #fbeed6;
+    --ui-danger: #b04a3a;
+    --ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --ui-font: system-ui, sans-serif;
+}

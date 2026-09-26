@@ -1,0 +1,99 @@
+.purchase-prompt-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.35);
+    font-family: var(--ui-font);
+    color: var(--ui-text);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s, visibility 0.15s;
+}
+
+.purchase-prompt-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.purchase-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: min(300px, calc(100% - 32px));
+    padding: 20px;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transform: scale(0.95);
+    transition: transform 0.15s ease-out;
+}
+
+.purchase-prompt-overlay.is-open .purchase-prompt {
+    transform: scale(1);
+}
+
+.purchase-prompt-image {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+}
+
+.purchase-prompt-title {
+    margin: 0;
+    font-size: 17px;
+}
+
+.purchase-prompt-price {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.purchase-prompt-price img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.purchase-prompt-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.purchase-prompt-button {
+    padding: 9px 12px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 10px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.purchase-prompt-button:hover {
+    filter: brightness(0.96);
+}
+
+.purchase-prompt-button.is-primary {
+    background: var(--ui-accent);
+    border-color: var(--ui-accent);
+    color: #ffffff;
+}
+
+.purchase-prompt-button.is-subtle {
+    background: transparent;
+    border-color: transparent;
+    font-weight: 500;
+}

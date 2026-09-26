@@ -1,0 +1,155 @@
+.hud {
+    --shop-button-size: 56px;
+    /* Bell and streak */
+    --small-button-size: 46px;
+    --counter-height: 30px;
+    --counter-icon-size: 22px;
+
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 3;
+    display: grid;
+    /* Rearrange the HUD here: each name is one control, "." is an empty cell */
+    grid-template-areas:
+        "shop   coins"
+        "bell   ."
+        "streak streak-count";
+    grid-template-columns: var(--shop-button-size) auto;
+    align-items: center;
+    justify-items: center;
+    gap: 10px 8px;
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    /* Only the controls themselves block clicks to the game, not the gaps between them */
+    pointer-events: none;
+}
+
+.hud > * {
+    pointer-events: auto;
+    transition: transform 0.12s ease-out, opacity 0.2s ease-out, visibility 0.2s;
+}
+
+.hud-shop-button {
+    grid-area: shop;
+}
+
+.hud-coin-counter {
+    grid-area: coins;
+    justify-self: start;
+}
+
+.hud-bell-button {
+    grid-area: bell;
+}
+
+.hud-streak-badge {
+    grid-area: streak;
+}
+
+.hud-streak-counter {
+    grid-area: streak-count;
+    justify-self: start;
+}
+
+/* Circular buttons and badges */
+.hud-round {
+    display: grid;
+    place-items: center;
+    width: var(--shop-button-size);
+    height: var(--shop-button-size);
+    padding: 0;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: 50%;
+    box-shadow: var(--ui-shadow);
+}
+
+.hud-round.is-small {
+    width: var(--small-button-size);
+    height: var(--small-button-size);
+}
+
+button.hud-round {
+    cursor: pointer;
+}
+
+button.hud-round:hover {
+    transform: scale(1.06);
+}
+
+button.hud-round:active {
+    transform: scale(0.95);
+}
+
+.hud-round-icon {
+    width: 60%;
+    height: 60%;
+    object-fit: contain;
+}
+
+/* The bell swings from its top */
+.hud-bell-button .hud-round-icon {
+    transform-origin: 50% 12%;
+}
+
+/* Pill-shaped number displays beside a button */
+.hud-counter {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: var(--counter-height);
+    padding: 0 11px 0 4px;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: calc(var(--counter-height) / 2);
+    box-shadow: var(--ui-shadow);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+/* No icon inside, so it's padded evenly */
+.hud-streak-counter {
+    padding: 0 11px;
+}
+
+.hud-counter-icon {
+    width: var(--counter-icon-size);
+    height: var(--counter-icon-size);
+    object-fit: contain;
+}
+
+.hud-counter-value {
+    font-variant-numeric: tabular-nums;
+}
+
+.hud.is-side-panel-open .hides-for-side-panel {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-10px);
+}
+
+.placement-hint {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    z-index: 3;
+    padding: 6px 14px;
+    background: rgba(58, 50, 38, 0.85);
+    border-radius: 999px;
+    color: #ffffff;
+    font-family: var(--ui-font);
+    font-size: 13px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -8px);
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.placement-hint.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
