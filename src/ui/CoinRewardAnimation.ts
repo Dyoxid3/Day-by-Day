@@ -1,6 +1,8 @@
 import { EventBus, GameEvents, type CoinRewardRequestedPayload } from '../game/EventBus';
 import { playerWallet } from '../game/state/Wallet';
 import { uiAssets } from './UiAssets';
+import { FormatBoostMultiplier } from './UiFormat';
+import './CoinRewardAnimation.css';
 
 const coinAnimationSettings = {
     // Size when leaving the character
@@ -80,6 +82,37 @@ export class CoinRewardAnimation
 
             this.AnimateCoin(source, counter, index * settings.streamIntervalMs, coinValue);
         }
+
+        this.ShowAmountLabel(source, payload);
+    }
+
+    // "+6" rising from where the coins came from, with the friends' boost if there is one
+    private ShowAmountLabel (source: Point, payload: CoinRewardRequestedPayload)
+    {
+        const label = document.createElement('div');
+        label.className = 'coin-reward-label';
+        label.style.left = `${source.x}px`;
+        label.style.top = `${source.y}px`;
+        label.textContent = `+${payload.amount}`;
+
+        if (payload.multiplier > 1)
+        {
+            const boostElement = document.createElement('span');
+            boostElement.className = 'coin-reward-boost';
+            boostElement.textContent = `${FormatBoostMultiplier((payload.multiplier - 1) * 100)} boost`;
+            label.append(boostElement);
+        }
+
+        this.layerElement.append(label);
+        label.animate(
+            [
+                { opacity: 0, transform: 'translate(-50%, -30%) scale(0.6)' },
+                { opacity: 1, transform: 'translate(-50%, -110%) scale(1.1)', offset: 0.2 },
+                { opacity: 1, transform: 'translate(-50%, -150%) scale(1)', offset: 0.75 },
+                { opacity: 0, transform: 'translate(-50%, -190%) scale(1)' }
+            ],
+            { duration: 1400, easing: 'ease-out' }
+        ).onfinish = () => label.remove();
     }
 
     private AnimateCoin (source: Point, counter: Point, delayMs: number, coinValue: number)

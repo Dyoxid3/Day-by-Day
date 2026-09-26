@@ -61,6 +61,8 @@ export class ShopPanel
 
         EventBus.on(GameEvents.UiPanelToggled, this.HandleUiPanelToggled, this);
         EventBus.on(GameEvents.CoinsChanged, this.RefreshAffordability, this);
+        // Items can only be placed on your own island, so the shop closes when you set sail
+        EventBus.on(GameEvents.TravelStarted, () => this.SetOpen(false));
         window.addEventListener('resize', () => this.HandleWindowResize());
     }
 

@@ -1,0 +1,31 @@
+.coin-reward-label {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #ffd23f;
+    font-family: var(--ui-font);
+    font-size: 20px;
+    font-weight: 900;
+    white-space: nowrap;
+    pointer-events: none;
+    text-shadow:
+        0 0 2px #8a5a00,
+        1px 1px 0 #8a5a00,
+        -1px 1px 0 #8a5a00,
+        1px -1px 0 #8a5a00,
+        -1px -1px 0 #8a5a00,
+        0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.coin-reward-boost {
+    padding: 1px 7px;
+    background: linear-gradient(135deg, #ffcf4a, #f29d1f);
+    border: 1.5px solid #ffffff;
+    border-radius: 999px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    text-shadow: 0 1px 1px rgba(150, 80, 0, 0.5);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}

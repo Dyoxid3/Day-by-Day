@@ -3,7 +3,9 @@ import { EventBus, GameEvents, type ItemPlacedPayload, type PlacementPayload, ty
 import { GetShopItem } from '../data/ShopCatalog';
 import { PlacedItem } from '../entities/PlacedItem';
 import { playerInventory } from '../state/Inventory';
+import { playerIslandLayout } from '../state/IslandLayout';
 import { ScreenToWorld } from './CameraMath';
+import { PlacedItemsLayer } from './PlacedItemsLayer';
 import { PlayPlacementImpact } from '../effects/PlacementImpactEffect';
 
 const placementSettings = {
@@ -18,15 +20,16 @@ export class ItemPlacementController
 {
     private scene: Scene;
     private placeableArea: Phaser.Geom.Rectangle;
-    private placedItems: PlacedItem[] = [];
+    private itemsLayer: PlacedItemsLayer;
     private previewItem?: PlacedItem;
     private isPreviewValid = false;
     private hasPointerMovedSinceStart = false;
 
-    constructor (scene: Scene, placeableArea: Phaser.Geom.Rectangle)
+    constructor (scene: Scene, placeableArea: Phaser.Geom.Rectangle, itemsLayer: PlacedItemsLayer)
     {
         this.scene = scene;
         this.placeableArea = placeableArea;
+        this.itemsLayer = itemsLayer;
 
         scene.input.mouse?.disableContextMenu();
         scene.input.on(Input.Events.POINTER_DOWN, this.HandlePointerDown, this);
@@ -96,7 +99,9 @@ export class ItemPlacementController
         placedItem.setAlpha(1);
         placedItem.clearTint();
         placedItem.UpdateDepth();
-        this.placedItems.push(placedItem);
+        this.itemsLayer.Add(placedItem);
+        // Recorded before the landing animation moves it, so the saved position is where it rests
+        playerIslandLayout.AddPlacedItem(this.itemsLayer.ToRecord(placedItem));
         PlayPlacementImpact(this.scene, placedItem);
         this.EndPlacement(true);
 
@@ -195,7 +200,7 @@ export class ItemPlacementController
             return false;
         }
 
-        return !this.placedItems.some(placedItem => Geom.Intersects.RectangleToRectangle(footprint, placedItem.GetFootprint()));
+        return !this.itemsLayer.GetFootprints().some(otherFootprint => Geom.Intersects.RectangleToRectangle(footprint, otherFootprint));
     }
 
     private Destroy ()

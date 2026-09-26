@@ -1,0 +1,95 @@
+.visit-banner {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: calc(100% - 180px);
+    padding: 6px 6px 6px 16px;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: 999px;
+    box-shadow: var(--ui-shadow);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -12px);
+    transition: opacity 0.25s, transform 0.25s ease-out, visibility 0s 0.25s;
+}
+
+.visit-banner.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    transition: opacity 0.25s, transform 0.25s ease-out;
+}
+
+.visit-banner-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.visit-banner-home {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    background: #4f8fd9;
+    border: none;
+    border-radius: 999px;
+    color: #ffffff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: filter 0.12s, transform 0.12s;
+}
+
+.visit-banner-home:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.visit-banner-home:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+.visit-banner-home:disabled {
+    cursor: default;
+    opacity: 0.75;
+}
+
+/* Shown over the sea while sailing between islands */
+.travel-caption {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    z-index: 4;
+    padding: 12px 22px;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 999px;
+    box-shadow: 0 6px 20px rgba(0, 40, 90, 0.25);
+    color: #1d4f80;
+    font-family: var(--ui-font);
+    font-size: 18px;
+    font-weight: 800;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.96);
+    transition: opacity 0.35s, transform 0.35s ease-out;
+}
+
+.travel-caption.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+    animation: travel-caption-bob 1.6s ease-in-out infinite;
+}
+
+@keyframes travel-caption-bob {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -5px; }
+}

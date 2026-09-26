@@ -4,6 +4,7 @@ export const uiAssets = {
     shoppingCart: 'assets/shoppingcart.png',
     bell: 'assets/bell.png',
     fire: 'assets/fire.png',
+    profile: 'assets/profile.png',
     // No trash image yet, so the delete button shows an emoji. Set this (e.g. 'assets/trash.png') to use an image instead.
     trash: ''
 };

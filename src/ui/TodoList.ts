@@ -1,6 +1,8 @@
 import { EventBus, GameEvents, type TasksChangedPayload } from '../game/EventBus';
 import { playerTaskList } from '../game/state/TaskList';
 import { GetImportanceLevel, taskTypes, type Task } from '../game/data/TaskTypes';
+import { coinRewardSettings } from '../game/data/CoinRewardSettings';
+import { RequestCoinRewardAtScreenPoint } from '../game/systems/CoinRewards';
 import { NewTaskPrompt } from './NewTaskPrompt';
 import { uiAssets } from './UiAssets';
 import './TodoList.css';
@@ -72,7 +74,7 @@ export class TodoList
         switch (payload.reason)
         {
             case 'completed':
-                this.AnimateRowThenRender(payload.taskId, row => this.PlayCompletionAnimation(row));
+                this.AnimateRowThenRender(payload.taskId, row => this.PlayCompletionAnimation(row, payload.isFirstCompletion));
                 break;
 
             case 'deleted':
@@ -217,7 +219,7 @@ export class TodoList
         this.RequestRender();
     }
 
-    private async PlayCompletionAnimation (row: HTMLDivElement)
+    private async PlayCompletionAnimation (row: HTMLDivElement, isFirstCompletion: boolean)
     {
         const settings = todoAnimationSettings;
         const checkbox = row.querySelector<HTMLElement>('.todo-task-checkbox');
@@ -229,6 +231,18 @@ export class TodoList
         {
             checkbox.setAttribute('aria-checked', 'true');
             this.SpawnCompletionBurst(checkbox, row.style.getPropertyValue('--task-color'));
+
+            // Coins stream from the checkbox up to the coin counter (only the first time a task is checked)
+            if (isFirstCompletion)
+            {
+                const checkboxBounds = checkbox.getBoundingClientRect();
+
+                RequestCoinRewardAtScreenPoint(
+                    coinRewardSettings.taskCompletionCoins,
+                    checkboxBounds.left + checkboxBounds.width / 2,
+                    checkboxBounds.top + checkboxBounds.height / 2
+                );
+            }
             checkbox.animate(
                 [ { transform: 'scale(1)' }, { transform: 'scale(1.3)' }, { transform: 'scale(0.92)' }, { transform: 'scale(1)' } ],
                 { duration: settings.checkboxPopDurationMs, easing: 'ease-out' }

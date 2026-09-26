@@ -75,6 +75,10 @@
     align-items: center;
 }
 
+.bottom-panel-section.is-right {
+    align-items: flex-end;
+}
+
 /* Shared style for section titles, like "To-do list" */
 .bottom-panel-heading {
     margin: 0 0 10px;
@@ -85,14 +89,9 @@
     text-transform: uppercase;
 }
 
-/* On narrow screens the empty right column is dropped so the to-do list gets the room */
-@container (max-width: 640px) {
+/* Tighter on narrow screens */
+@container (max-width: 760px) {
     .bottom-panel-layout {
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 20px;
-    }
-
-    .bottom-panel-section:empty {
-        display: none;
+        gap: 16px;
     }
 }

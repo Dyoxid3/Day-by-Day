@@ -30,6 +30,7 @@ export class IslandCameraController
     private framedArea: Phaser.Geom.Rectangle;
     private panLimits: Phaser.Geom.Rectangle;
     private coveredLeftFraction = 0;
+    private coveredRightFraction = 0;
     private coveredBottomFraction = 0;
     private targetZoom = cameraSettings.defaultZoom;
     private isInteractionEnabled = true;
@@ -59,7 +60,7 @@ export class IslandCameraController
 
         this.targetZoom = this.GetDefaultZoom();
         this.camera.setZoom(this.targetZoom);
-        this.SnapToDefaultView();
+        this.SnapScrollToDefaultView();
 
         cat.setInteractive({ useHandCursor: true });
         cat.on(Input.Events.GAMEOBJECT_POINTER_DOWN, this.HandleCatClick, this);
@@ -90,15 +91,27 @@ export class IslandCameraController
     }
 
     // Call when UI covers part of the screen, so the camera frames things in the part still visible
-    SetScreenInsets (leftFraction: number, bottomFraction: number)
+    SetScreenInsets (leftFraction: number, bottomFraction: number, rightFraction = 0)
     {
         this.coveredLeftFraction = PhaserMath.Clamp(leftFraction, 0, 1);
+        this.coveredRightFraction = PhaserMath.Clamp(rightFraction, 0, 1 - this.coveredLeftFraction);
         this.coveredBottomFraction = PhaserMath.Clamp(bottomFraction, 0, 1);
 
         if (!this.isFocusedOnCat)
         {
             this.ReturnToDefaultView();
         }
+    }
+
+    // Jumps straight to the default view for the current screen insets, without easing
+    SnapToDefaultView ()
+    {
+        this.isFocusedOnCat = false;
+        this.isReturningToDefault = false;
+        this.targetZoom = this.GetDefaultZoom();
+        this.camera.setZoom(this.targetZoom);
+        this.SnapScrollToDefaultView();
+        this.ClampVisibleAreaToPanLimits();
     }
 
     // Turns drag-panning and double-click-to-focus on or off (scroll zoom always works)
@@ -133,7 +146,7 @@ export class IslandCameraController
         return {
             x,
             y: 0,
-            width: this.camera.width - x,
+            width: this.camera.width * (1 - this.coveredRightFraction) - x,
             height: this.camera.height * (1 - this.coveredBottomFraction)
         };
     }
@@ -161,7 +174,7 @@ export class IslandCameraController
         };
     }
 
-    private SnapToDefaultView ()
+    private SnapScrollToDefaultView ()
     {
         const scroll = this.GetScrollToShowAtVisibleCenter(this.framedArea.centerX, this.framedArea.centerY, this.camera.zoom);
 
@@ -281,7 +294,7 @@ export class IslandCameraController
             if (hasArrived)
             {
                 this.camera.setZoom(this.targetZoom);
-                this.SnapToDefaultView();
+                this.SnapScrollToDefaultView();
                 this.isReturningToDefault = false;
             }
         }

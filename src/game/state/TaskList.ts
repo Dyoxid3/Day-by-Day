@@ -40,7 +40,8 @@ class TaskList
         const task: Task = {
             ...details,
             id: `task-${this.nextTaskNumber++}`,
-            isCompleted: false
+            isCompleted: false,
+            hasEarnedCoins: false
         };
 
         this.tasks.push(task);
@@ -81,13 +82,16 @@ class TaskList
             return;
         }
 
+        const isFirstCompletion = isCompleted && !task.hasEarnedCoins;
+
         task.isCompleted = isCompleted;
-        this.EmitChange(isCompleted ? 'completed' : 'reopened', taskId);
+        task.hasEarnedCoins ||= isCompleted;
+        this.EmitChange(isCompleted ? 'completed' : 'reopened', taskId, isFirstCompletion);
     }
 
-    private EmitChange (reason: TaskChangeReason, taskId: string)
+    private EmitChange (reason: TaskChangeReason, taskId: string, isFirstCompletion = false)
     {
-        const payload: TasksChangedPayload = { reason, taskId, progress: this.GetProgress() };
+        const payload: TasksChangedPayload = { reason, taskId, progress: this.GetProgress(), isFirstCompletion };
 
         EventBus.emit(GameEvents.TasksChanged, payload);
     }

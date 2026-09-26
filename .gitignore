@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Online prototype save data (accounts, friends, islands)
+server/data
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

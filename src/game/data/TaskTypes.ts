@@ -59,6 +59,8 @@ export interface Task extends NewTaskDetails
 {
     id: string;
     isCompleted: boolean;
+    // Set the first time the task is checked off; unchecking and checking again doesn't earn coins twice
+    hasEarnedCoins: boolean;
 }
 
 export interface DailyProgress

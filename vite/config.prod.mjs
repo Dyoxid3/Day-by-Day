@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { OnlinePrototypeServer } from '../server/OnlinePrototypeServer.mjs';
 
 const phasermsg = () => {
     return {
@@ -42,6 +43,8 @@ export default defineConfig({
         port: 8080
     },
     plugins: [
-        phasermsg()
+        phasermsg(),
+        // Only used by `vite preview`, so a built game can still reach the online features
+        OnlinePrototypeServer()
     ]
 });

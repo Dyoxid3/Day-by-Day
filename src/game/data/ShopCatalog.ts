@@ -23,9 +23,18 @@ export const shopCatalog: ShopItem[] = [
     }
 ];
 
+// Selling an item from the inventory pays back this share of its shop price
+export const sellPriceFraction = 0.5;
+
 export function GetShopItem (itemId: string): ShopItem | undefined
 {
     return shopCatalog.find(item => item.id === itemId);
+}
+
+// Rounded down, but always at least 1 coin
+export function GetSellPrice (item: ShopItem): number
+{
+    return Math.max(1, Math.floor(item.price * sellPriceFraction));
 }
 
 export function GetItemTextureKey (item: ShopItem): string
