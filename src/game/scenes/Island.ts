@@ -1,15 +1,17 @@
-import { Scene, Geom, Scenes, Cameras } from 'phaser';
+import { Scene, Geom, Scenes, Cameras, Textures } from 'phaser';
 import { WanderingCat } from '../entities/WanderingCat';
 import { Boat, boatSettings, boatTextureKey } from '../entities/Boat';
 import { IslandCameraController } from '../systems/IslandCameraController';
 import { ItemPlacementController } from '../systems/ItemPlacementController';
 import { PlacedItemsLayer } from '../systems/PlacedItemsLayer';
+import { IslandGround } from '../systems/IslandGround';
 import { IslandTravel } from '../systems/IslandTravel';
 import { VisitorManager } from '../systems/VisitorManager';
 import { VisitCoinDrops, coinTextureKey } from '../systems/VisitCoinDrops';
 import {
     EventBus,
     GameEvents,
+    type CatMoodChangedPayload,
     type IslandLayoutChangedPayload,
     type ItemPlacedPayload,
     type TravelRequestedPayload,
@@ -18,14 +20,22 @@ import {
     type VisitedIsland,
     type VisitStateChangedPayload
 } from '../EventBus';
-import { GetIslandPositions, islandCatSettings, type IslandPositions, type Mooring } from '../data/IslandSettings';
+import { GetIslandPositions, islandArt, islandCatSettings, type IslandPositions, type Mooring } from '../data/IslandSettings';
+import { catAppearance, catExpressions, catTextureKeys, GetCatFaceTextureKey, type CatExpression } from '../data/CatAppearance';
 import { shopCatalog, GetItemTextureKey } from '../data/ShopCatalog';
 import { playerIslandLayout } from '../state/IslandLayout';
+import { playerCatMood } from '../state/CatMood';
 import { RegisterDebugControls } from '../debug/DebugControls';
 
 // Boat trips fade through the sea's color
-const seaColor = { red: 2, green: 138, blue: 248 };
+const seaColor = {
+    red: (islandArt.seaColor >> 16) & 0xff,
+    green: (islandArt.seaColor >> 8) & 0xff,
+    blue: islandArt.seaColor & 0xff
+};
 const travelFadeMs = 450;
+// Other players' cats show these faces now and then (their real mood isn't shared online yet)
+const otherCatExpressions: CatExpression[] = [ 'default', 'cool', 'satisfied', 'dazed' ];
 
 export interface IslandSceneData
 {
@@ -43,8 +53,11 @@ export class Island extends Scene
     playerCat: WanderingCat;
     cameraController: IslandCameraController;
     placementController?: ItemPlacementController;
-    private groundBounds: Phaser.Geom.Rectangle;
+    // The grass and sand, where cats walk and items go
+    private ground: IslandGround;
     private positions: IslandPositions;
+    // Pixel art is drawn sharp when zoomed in and smoothed when zoomed out (sharp pixels shimmer when shrunk)
+    private isPixelArtSharp?: boolean;
     private itemsLayer: PlacedItemsLayer;
     private travel: IslandTravel;
     private playerBoat: Boat;
@@ -67,8 +80,15 @@ export class Island extends Scene
     {
         this.load.setPath('assets');
 
-        this.load.image('island', 'islandplaceholder.png');
-        this.load.image('cat', 'testsprite.png');
+        this.load.image(islandArt.textureKey, islandArt.file);
+        this.load.image(catTextureKeys.body, catAppearance.folder + catAppearance.bodyFile);
+        this.load.image(catTextureKeys.head, catAppearance.folder + catAppearance.headFile);
+
+        for (const expression of catExpressions)
+        {
+            this.load.image(GetCatFaceTextureKey(expression), catAppearance.folder + catAppearance.faceFiles[expression]);
+        }
+
         this.load.image(coinTextureKey, 'coin.png');
 
         if (boatSettings.imageFile)
@@ -91,19 +111,17 @@ export class Island extends Scene
         this.playerCoinDrops = undefined;
 
         this.camera = this.cameras.main;
-        this.camera.setBackgroundColor(0x028af8);
+        this.camera.setBackgroundColor(islandArt.seaColor);
+        this.isPixelArtSharp = undefined;
 
-        this.island = this.add.image(this.scale.width / 2, this.scale.height / 2, 'island');
+        // The island art is drawn at 1x, behind everything
+        this.island = this.add.image(this.scale.width / 2, this.scale.height / 2, islandArt.textureKey);
+        this.island.setDepth(-1);
 
         const islandBounds = this.island.getBounds();
 
         this.positions = GetIslandPositions(islandBounds);
-        this.groundBounds = new Geom.Rectangle(
-            this.positions.ground.left,
-            this.positions.ground.top,
-            this.positions.ground.width,
-            this.positions.ground.height
-        );
+        this.ground = new IslandGround(this, this.island);
         this.itemsLayer = new PlacedItemsLayer(this, islandBounds);
         this.travel = new IslandTravel(this);
 
@@ -116,16 +134,24 @@ export class Island extends Scene
             this.SetUpHomeIsland(data.arrivesByBoat === true);
         }
 
-        this.cameraController = new IslandCameraController(this, this.playerCat, islandBounds);
+        // The player's own cat shows their cat's mood (see state/CatMood)
+        this.playerCat.SetExpression(playerCatMood.GetExpression());
+
+        // Frames the island itself rather than the whole image, so the default view is closer in
+        const viewArea = this.positions.viewArea;
+        const framedArea = new Geom.Rectangle(viewArea.left, viewArea.top, viewArea.width, viewArea.height);
+
+        this.cameraController = new IslandCameraController(this, this.playerCat, framedArea);
         this.ApplyScreenInsets();
         this.cameraController.SnapToDefaultView();
+        this.UpdatePixelArtSharpness();
 
         if (!this.visitedIsland)
         {
             // Created after the camera controller so its click handler runs second: the click that places an
             // item re-enables camera dragging only after the camera has already ignored that click
-            this.placementController = new ItemPlacementController(this, this.groundBounds, this.itemsLayer);
-            new VisitorManager(this, this.positions, this.travel, (x, y) => this.CreateCat(x, y));
+            this.placementController = new ItemPlacementController(this, this.ground, this.itemsLayer);
+            new VisitorManager(this, this.positions, this.travel, (x, y) => this.CreateOtherPlayersCat(x, y));
         }
 
         if (import.meta.env.DEV)
@@ -147,20 +173,24 @@ export class Island extends Scene
 
     private SetUpHomeIsland (arrivesByBoat: boolean)
     {
+        const startPoint = this.GetIslandMiddle();
+
         this.itemsLayer.Load(playerIslandLayout.GetPlacedItems());
 
         this.playerMooring = this.positions.homeMooring;
         this.playerBoat = this.CreateMooredBoat(this.playerMooring, !arrivesByBoat);
-        this.playerCat = this.CreateCat(this.groundBounds.centerX, this.groundBounds.centerY);
+        this.playerCat = this.CreateCat(startPoint.x, startPoint.y);
     }
 
     private SetUpVisitedIsland (visitedIsland: VisitedIsland)
     {
+        const startPoint = this.GetIslandMiddle();
+
         this.itemsLayer.Load(visitedIsland.placedItems);
 
         // The friend's own boat and cat, which just wanders about as usual
         this.CreateMooredBoat(this.positions.homeMooring, true);
-        this.CreateCat(this.groundBounds.centerX, this.groundBounds.centerY).SetNameTag(visitedIsland.ownerUsername);
+        this.CreateOtherPlayersCat(startPoint.x, startPoint.y).SetNameTag(visitedIsland.ownerUsername);
 
         this.playerMooring = this.positions.guestMoorings[0];
         this.playerBoat = this.CreateMooredBoat(this.playerMooring, false);
@@ -168,19 +198,30 @@ export class Island extends Scene
         this.playerCat.SetNameTag(visitedIsland.visitorUsername);
     }
 
+    // A spot on the grass near the middle of the island
+    private GetIslandMiddle ()
+    {
+        const bounds = this.ground.GetBounds();
+
+        return this.ground.FindNearestStandablePoint(bounds.centerX, bounds.centerY);
+    }
+
+    // Positioned by its feet
     private CreateCat (x: number, y: number): WanderingCat
     {
-        const cat = new WanderingCat(
-            this,
-            x,
-            y,
-            'cat',
-            this.groundBounds,
-            islandCatSettings.minWanderDelayMs,
-            islandCatSettings.maxWanderDelayMs
-        );
+        const cat = new WanderingCat(this, x, y, this.ground, islandCatSettings.minWanderDelayMs, islandCatSettings.maxWanderDelayMs);
 
-        cat.setScale(islandCatSettings.scale);
+        cat.SetRestingScale(islandCatSettings.scale);
+
+        return cat;
+    }
+
+    // Friends' cats (as hosts or visitors), which change faces now and then on their own
+    private CreateOtherPlayersCat (x: number, y: number): WanderingCat
+    {
+        const cat = this.CreateCat(x, y);
+
+        cat.StartRandomExpressions(otherCatExpressions);
 
         return cat;
     }
@@ -208,6 +249,7 @@ export class Island extends Scene
         EventBus.on(GameEvents.ItemPlaced, this.HandleItemPlaced, this);
         EventBus.on(GameEvents.IslandLayoutChanged, this.HandleIslandLayoutChanged, this);
         EventBus.on(GameEvents.TravelRequested, this.HandleTravelRequested, this);
+        EventBus.on(GameEvents.CatMoodChanged, this.HandleCatMoodChanged, this);
 
         this.events.once(Scenes.Events.SHUTDOWN, () => {
             EventBus.off(GameEvents.UiPanelToggled, this.HandleUiPanelToggled, this);
@@ -216,7 +258,44 @@ export class Island extends Scene
             EventBus.off(GameEvents.ItemPlaced, this.HandleItemPlaced, this);
             EventBus.off(GameEvents.IslandLayoutChanged, this.HandleIslandLayoutChanged, this);
             EventBus.off(GameEvents.TravelRequested, this.HandleTravelRequested, this);
+            EventBus.off(GameEvents.CatMoodChanged, this.HandleCatMoodChanged, this);
         });
+    }
+
+    update ()
+    {
+        this.UpdatePixelArtSharpness();
+    }
+
+    // Sharp (nearest-pixel) at 1x zoom and closer, smoothed when zoomed out so thin lines don't flicker
+    private UpdatePixelArtSharpness ()
+    {
+        const shouldBeSharp = this.camera.zoom >= 1;
+
+        if (shouldBeSharp === this.isPixelArtSharp)
+        {
+            return;
+        }
+
+        const filterMode = shouldBeSharp ? Textures.FilterMode.NEAREST : Textures.FilterMode.LINEAR;
+        const pixelArtKeys = [
+            islandArt.textureKey,
+            catTextureKeys.body,
+            catTextureKeys.head,
+            ...catExpressions.map(GetCatFaceTextureKey)
+        ];
+
+        this.isPixelArtSharp = shouldBeSharp;
+
+        for (const key of pixelArtKeys)
+        {
+            this.textures.get(key).setFilter(filterMode);
+        }
+    }
+
+    private HandleCatMoodChanged (payload: CatMoodChangedPayload)
+    {
+        this.playerCat.SetExpression(payload.expression);
     }
 
     // --- Boat trips ---

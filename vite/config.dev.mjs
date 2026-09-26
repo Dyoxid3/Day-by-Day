@@ -14,6 +14,9 @@ export default defineConfig({
     },
     server: {
         port: 8080,
+        // Lets a temporary Cloudflare tunnel reach the dev server, for testing on a phone when the Wi-Fi
+        // blocks devices from reaching each other (see ONLINE_PLAYTEST.md)
+        allowedHosts: [ '.trycloudflare.com' ],
         watch: {
             // The online server's save file changes constantly and isn't part of the game
             ignored: ['**/server/data/**']

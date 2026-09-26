@@ -32,6 +32,16 @@
     pointer-events: auto;
 }
 
+/* Phones: toasts span the screen's width at the top */
+@media (max-width: 600px) {
+    .toast-stack {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+}
+
 .toast.is-reward {
     --toast-accent: #f2b632;
 

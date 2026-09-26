@@ -6,7 +6,7 @@ import { ScreenToWorld } from './CameraMath';
 
 const travelSettings = {
     // Cats hurry to the boat
-    runSpeedMultiplier: 2.2,
+    runSpeedMultiplier: 3.5,
     // How far past the screen edge boats start and finish, in world px
     offscreenMarginPx: 140,
     // Pause after stepping off the boat before wandering off
@@ -39,7 +39,7 @@ export class IslandTravel
 
         boat.StopBobbing();
         cat.SetRidingBoat(boat);
-        await cat.HopTo(seat.x, seat.y - cat.displayHeight / 2);
+        await cat.HopTo(seat.x, seat.y);
 
         if (!cat.active || !boat.active)
         {
@@ -57,7 +57,7 @@ export class IslandTravel
 
         const seat = boat.GetSeatPoint();
 
-        cat.setPosition(seat.x, seat.y - cat.displayHeight / 2);
+        cat.setPosition(seat.x, seat.y);
         cat.SetRidingBoat(boat);
         await boat.SailTo(mooring.dock.x, mooring.dock.y, [ cat ]);
 

@@ -1,5 +1,6 @@
 import { Events } from 'phaser';
 import type { DailyProgress } from './data/TaskTypes';
+import type { CatExpression } from './data/CatAppearance';
 import type { PlacedItemRecord } from './state/IslandLayout';
 import type { OnlineNotification, OnlineSnapshot } from '../online/OnlineTypes';
 
@@ -14,11 +15,15 @@ export const GameEvents = {
     PlacementRequested: 'placement-requested',
     PlacementStarted: 'placement-started',
     PlacementEnded: 'placement-ended',
+    // Puts the item being placed back in the inventory (the "Store it" button on touch screens)
+    PlacementCancelRequested: 'placement-cancel-requested',
     ItemPlaced: 'item-placed',
     TasksChanged: 'tasks-changed',
     StreakChanged: 'streak-changed',
     IslandLayoutChanged: 'island-layout-changed',
     CoinBoostChanged: 'coin-boost-changed',
+    ItemPurchased: 'item-purchased',
+    CatMoodChanged: 'cat-mood-changed',
 
     // Travelling between islands, in the order they happen
     TravelRequested: 'travel-requested',
@@ -121,6 +126,21 @@ export interface IslandLayoutChangedPayload
 {
     // 'added' when the player places an item, 'replaced' when a whole saved layout is loaded
     reason: 'added' | 'replaced';
+}
+
+export interface ItemPurchasedPayload
+{
+    itemId: string;
+}
+
+export interface CatMoodChangedPayload
+{
+    // 0 (miserable) to 100 (thriving)
+    happiness: number;
+    // Name of the mood band the happiness falls in, e.g. 'content'
+    moodName: string;
+    // The face the cat is showing right now
+    expression: CatExpression;
 }
 
 export interface CoinBoostChangedPayload

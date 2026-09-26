@@ -2,8 +2,7 @@ import StartGame from './game/main';
 import { BottomPanel } from './ui/BottomPanel';
 import { TodoList } from './ui/TodoList';
 import { ProgressRing } from './ui/ProgressRing';
-import { FriendsCard } from './ui/FriendsCard';
-import { InventoryButton } from './ui/InventoryButton';
+import { PlayerMenu } from './ui/PlayerMenu';
 import { ShopPanel } from './ui/ShopPanel';
 import { ProfilePanel } from './ui/ProfilePanel';
 import { InventoryPanel } from './ui/InventoryPanel';
@@ -23,12 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const gameContainer = document.getElementById('game-container') as HTMLElement;
 
-    // The bottom menu: to-do list, today's progress, and friends with the inventory button under them
-    const bottomPanel = new BottomPanel(gameContainer);
+    // The bottom menu: to-do list, today's progress, and buttons for the profile (with friends) and inventory
+    const bottomPanel = new BottomPanel(gameContainer, { left: 'To-do', center: 'Progress', right: 'Friends' });
     new TodoList(bottomPanel.leftSection, gameContainer);
     new ProgressRing(bottomPanel.centerSection);
-    new FriendsCard(bottomPanel.rightSection);
-    new InventoryButton(bottomPanel.rightSection);
+    new PlayerMenu(bottomPanel.rightSection);
 
     const shopPanel = new ShopPanel(gameContainer);
     new ProfilePanel(gameContainer);

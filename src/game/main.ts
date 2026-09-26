@@ -13,11 +13,16 @@ const config: Phaser.Types.Core.GameConfig = {
     width: 1024,
     height: 768,
     parent: 'game-container',
-    backgroundColor: '#028af8',
+    // Matches the sea at the island art's edges (see islandArt.seaColor)
+    backgroundColor: '#1ea9e0',
     // Fills #game-container (the whole window) at 1024x768 scale, showing extra world on the longer side
     scale: {
         mode: Scale.EXPAND,
         expandParent: false
+    },
+    // Tracks two fingers at once on touch screens, for pinch-zooming
+    input: {
+        activePointers: 3
     },
     scene: [
         Boot,

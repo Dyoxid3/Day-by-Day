@@ -13,6 +13,7 @@ import { playerCoinBoost } from '../game/state/CoinBoost';
 import { onlineSession } from '../online/OnlineSession';
 import { uiAssets } from './UiAssets';
 import { FormatBoostMultiplier, FormatMinutesLeft } from './UiFormat';
+import { IsTouchScreen } from './UiDevice';
 import './Hud.css';
 
 export interface HudActions
@@ -35,6 +36,7 @@ export class Hud
     private streakElement: HTMLDivElement;
     private streakCountElement: HTMLSpanElement;
     private placementHintElement: HTMLDivElement;
+    private placementHintTextElement: HTMLSpanElement;
     private openSidePanelIds = new Set<string>();
     private shownUnreadCount = 0;
 
@@ -79,7 +81,16 @@ export class Hud
 
         this.placementHintElement = document.createElement('div');
         this.placementHintElement.className = 'placement-hint';
-        this.placementHintElement.textContent = 'Click to place · Esc or right-click to store it';
+        this.placementHintTextElement = document.createElement('span');
+
+        // Touch screens have no Esc key or right-click, so they get a button instead (hidden on computers by CSS)
+        const storeButton = document.createElement('button');
+        storeButton.type = 'button';
+        storeButton.className = 'placement-hint-store';
+        storeButton.textContent = 'Store it';
+        storeButton.addEventListener('click', () => EventBus.emit(GameEvents.PlacementCancelRequested));
+
+        this.placementHintElement.append(this.placementHintTextElement, storeButton);
 
         container.append(this.hudElement, this.placementHintElement);
 
@@ -280,6 +291,9 @@ export class Hud
 
     private SetPlacementHintVisible (isVisible: boolean)
     {
+        this.placementHintTextElement.textContent = IsTouchScreen()
+            ? 'Tap a spot on the island to place it'
+            : 'Click to place · Esc or right-click to store it';
         this.placementHintElement.classList.toggle('is-visible', isVisible);
     }
 }

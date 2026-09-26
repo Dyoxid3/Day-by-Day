@@ -89,9 +89,81 @@
     text-transform: uppercase;
 }
 
+/* Tabs for the swipeable sections on narrow screens (hidden on wider ones) */
+.bottom-panel-tabs {
+    --section-tabs-height: 34px;
+
+    display: none;
+    gap: 4px;
+    height: var(--section-tabs-height);
+    margin-bottom: 10px;
+    padding: 3px;
+    box-sizing: border-box;
+    background: #efe6d8;
+    border-radius: 12px;
+}
+
+.bottom-panel-section-tab {
+    flex: 1;
+    padding: 0 6px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--ui-text-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.bottom-panel-section-tab.is-active {
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 /* Tighter on narrow screens */
 @container (max-width: 760px) {
     .bottom-panel-layout {
         gap: 16px;
+    }
+}
+
+/* Phones: one section at a time, swiped sideways or picked with the tabs */
+@container (max-width: 600px) {
+    .bottom-panel-tabs {
+        display: flex;
+    }
+
+    .bottom-panel-layout {
+        display: flex;
+        gap: 0;
+        height: calc(100% - 44px);
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+    }
+
+    .bottom-panel-layout::-webkit-scrollbar {
+        display: none;
+    }
+
+    .bottom-panel-section {
+        flex: 0 0 100%;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+    }
+
+    .bottom-panel-section.is-right {
+        align-items: stretch;
+    }
+}
+
+@media (max-width: 600px) {
+    .bottom-panel-content {
+        padding: 12px 14px 10px;
     }
 }

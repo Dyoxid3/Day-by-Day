@@ -93,3 +93,33 @@
     0%, 100% { translate: 0 0; }
     50% { translate: 0 -5px; }
 }
+
+/* Phones: the banner sits beside the bell (clear of the coin counter), without the word "Visiting" */
+@media (max-width: 600px) {
+    .visit-banner {
+        top: 78px;
+        right: 12px;
+        left: auto;
+        max-width: calc(100% - 92px);
+        gap: 8px;
+        padding: 4px 4px 4px 12px;
+        font-size: 13px;
+        transform: translateY(-12px);
+    }
+
+    .visit-banner.is-visible {
+        transform: none;
+    }
+
+    .visit-banner-prefix {
+        display: none;
+    }
+
+    .travel-caption {
+        max-width: calc(100% - 40px);
+        overflow: hidden;
+        box-sizing: border-box;
+        font-size: 16px;
+        text-overflow: ellipsis;
+    }
+}

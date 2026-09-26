@@ -1,4 +1,4 @@
-import { EventBus, GameEvents, type PlacementPayload, type UiPanelToggledPayload } from '../game/EventBus';
+import { EventBus, GameEvents, type ItemPurchasedPayload, type PlacementPayload, type UiPanelToggledPayload } from '../game/EventBus';
 import { shopCatalog, type ShopItem } from '../game/data/ShopCatalog';
 import { playerWallet } from '../game/state/Wallet';
 import { playerInventory } from '../game/state/Inventory';
@@ -152,6 +152,11 @@ export class ShopPanel
             ShakeElement(card);
             return;
         }
+
+        // The cat likes new things for the island (see state/CatMood)
+        const purchasedPayload: ItemPurchasedPayload = { itemId: item.id };
+
+        EventBus.emit(GameEvents.ItemPurchased, purchasedPayload);
 
         if (choice === 'store')
         {

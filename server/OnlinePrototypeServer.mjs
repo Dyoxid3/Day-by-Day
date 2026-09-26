@@ -609,7 +609,14 @@ function LoadDatabase ()
 
         try
         {
-            return JSON.parse(fileText);
+            const database = JSON.parse(fileText);
+
+            if (UpdateForIslandArt(database))
+            {
+                SaveDatabase(database);
+            }
+
+            return database;
         }
         catch (error)
         {
@@ -632,6 +639,39 @@ function SaveDatabase (database)
     writeFileSync(serverSettings.dataFilePath, JSON.stringify(database, null, 2));
 }
 
+// Bump when the island art changes, so the demo friends' furniture gets moved onto the new island
+const islandArtVersion = 2;
+
+// Where the demo friends' furniture sits, as fractions of the island image (on the grass)
+const demoFriendFurniture = {
+    mochi: [
+        { itemId: 'table', islandX: 0.36, islandY: 0.4 },
+        { itemId: 'table', islandX: 0.62, islandY: 0.47 }
+    ],
+    pixel: [ { itemId: 'table', islandX: 0.5, islandY: 0.36 } ]
+};
+
+// Save files from an older island art get the demo friends' furniture moved to where it fits now
+function UpdateForIslandArt (database)
+{
+    if (database.islandArtVersion === islandArtVersion)
+    {
+        return false;
+    }
+
+    for (const [ userKey, placedItems ] of Object.entries(demoFriendFurniture))
+    {
+        if (database.users[userKey])
+        {
+            database.users[userKey].island.placedItems = placedItems;
+        }
+    }
+
+    database.islandArtVersion = islandArtVersion;
+
+    return true;
+}
+
 // Two ready-made friends for demos and playtesting. Add them by username, or log in as them in another tab (password: demo).
 function CreateSeedDatabase ()
 {
@@ -639,17 +679,15 @@ function CreateSeedDatabase ()
 
     const mochi = CreateUser(database, 'Mochi', 'demo', {
         status: { streakDays: 12, progressPercent: 60 },
-        placedItems: [
-            { itemId: 'table', islandX: 0.34, islandY: 0.66 },
-            { itemId: 'table', islandX: 0.63, islandY: 0.7 }
-        ]
+        placedItems: demoFriendFurniture.mochi
     });
     const pixel = CreateUser(database, 'Pixel', 'demo', {
         status: { streakDays: 5, progressPercent: 25 },
-        placedItems: [ { itemId: 'table', islandX: 0.5, islandY: 0.64 } ]
+        placedItems: demoFriendFurniture.pixel
     });
 
     MakeFriends(mochi, pixel);
+    database.islandArtVersion = islandArtVersion;
 
     return database;
 }

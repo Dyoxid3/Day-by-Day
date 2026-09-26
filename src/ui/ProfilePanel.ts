@@ -2,7 +2,9 @@ import { EventBus, GameEvents, type UiPanelToggledPayload } from '../game/EventB
 import { GetCompletionPercent } from '../game/data/TaskTypes';
 import { playerCoinBoost } from '../game/state/CoinBoost';
 import { playerStreak } from '../game/state/DailyStreak';
+import { playerIslandLayout } from '../game/state/IslandLayout';
 import { playerTaskList } from '../game/state/TaskList';
+import { playerWallet } from '../game/state/Wallet';
 import { onlineSession, RequestToast } from '../online/OnlineSession';
 import { CreateAvatar } from './UiAvatar';
 import { ShakeElement } from './UiAnimations';
@@ -47,7 +49,7 @@ export class ProfilePanel
 
         const titleElement = document.createElement('h2');
         titleElement.className = 'profile-title';
-        titleElement.textContent = 'Profile & friends';
+        titleElement.textContent = 'Profile';
 
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
@@ -129,6 +131,8 @@ export class ProfilePanel
         EventBus.on(GameEvents.StreakChanged, () => this.UpdateStats());
         EventBus.on(GameEvents.TasksChanged, () => this.UpdateStats());
         EventBus.on(GameEvents.CoinBoostChanged, () => this.UpdateStats());
+        EventBus.on(GameEvents.CoinsChanged, () => this.UpdateStats());
+        EventBus.on(GameEvents.IslandLayoutChanged, () => this.UpdateStats());
         window.addEventListener('resize', () => {
             if (this.isOpen)
             {
@@ -234,10 +238,14 @@ export class ProfilePanel
         }
 
         const boostPercent = playerCoinBoost.GetTotalPercent();
+        const progress = playerTaskList.GetProgress();
 
         this.statsElement.replaceChildren(
             CreateStat(`🔥 ${playerStreak.GetStreakDays()}`, 'day streak'),
-            CreateStat(`${GetCompletionPercent(playerTaskList.GetProgress())}%`, 'done today'),
+            CreateStat(`${GetCompletionPercent(progress)}%`, 'done today'),
+            CreateStat(`${progress.completedCount}/${progress.totalCount}`, 'tasks done'),
+            CreateStat(`🪙 ${playerWallet.GetCoins()}`, 'coins'),
+            CreateStat(`🪑 ${playerIslandLayout.GetPlacedItems().length}`, 'on your island'),
             CreateStat(boostPercent > 0 ? FormatBoostMultiplier(boostPercent) : '×1', 'coin boost', boostPercent > 0)
         );
     }
@@ -426,7 +434,6 @@ export class ProfilePanel
         }
 
         const rows = SortFriends(snapshot.friends).map(friend => CreateFriendRow(friend, {
-            isCompact: false,
             onVisitStarting: () => this.SetOpen(false)
         }));
 

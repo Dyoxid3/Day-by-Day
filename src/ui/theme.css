@@ -11,3 +11,13 @@
     --ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     --ui-font: system-ui, sans-serif;
 }
+
+/* Phones zoom the whole page into any text box with text under 16px, so touch screens get 16px text boxes */
+@media (pointer: coarse) {
+    input[type="text"],
+    input[type="password"],
+    input[type="time"],
+    textarea {
+        font-size: 16px !important;
+    }
+}

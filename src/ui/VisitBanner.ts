@@ -64,9 +64,14 @@ export class VisitBanner
 
         if (isVisiting)
         {
+            // "Visiting" is dropped on phones to save room
+            const prefixElement = document.createElement('span');
+            prefixElement.className = 'visit-banner-prefix';
+            prefixElement.textContent = 'Visiting ';
+
             const nameElement = document.createElement('strong');
             nameElement.textContent = payload.hostUsername;
-            this.bannerTextElement.replaceChildren('🏝️ Visiting ', nameElement, "'s island");
+            this.bannerTextElement.replaceChildren('🏝️ ', prefixElement, nameElement, "'s island");
         }
 
         this.bannerElement.classList.toggle('is-visible', isVisiting);

@@ -70,8 +70,11 @@
     height: var(--small-button-size);
 }
 
-.hud-round:hover {
-    transform: scale(1.06);
+/* Only with a mouse, so the grow doesn't get stuck on after a tap on touch screens */
+@media (hover: hover) {
+    .hud-round:hover {
+        transform: scale(1.06);
+    }
 }
 
 .hud-round:active {
@@ -259,4 +262,53 @@
 .placement-hint.is-visible {
     opacity: 1;
     transform: translate(-50%, 0);
+}
+
+.placement-hint-store {
+    display: none;
+    margin-left: 10px;
+    padding: 5px 12px;
+    background: #ffffff;
+    border: none;
+    border-radius: 999px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Touch screens: the hint gets a button to put the item away (there's no Esc key or right-click) */
+@media (pointer: coarse) {
+    .placement-hint {
+        display: flex;
+        align-items: center;
+        padding: 6px 6px 6px 14px;
+    }
+
+    .placement-hint.is-visible {
+        pointer-events: auto;
+    }
+
+    .placement-hint-store {
+        display: inline-block;
+    }
+}
+
+/* Narrow screens: the hint sits near the bottom so it doesn't cover the coin counter */
+@media (max-width: 600px) {
+    .placement-hint {
+        top: auto;
+        right: 12px;
+        bottom: 56px;
+        left: 12px;
+        width: fit-content;
+        margin: 0 auto;
+        white-space: normal;
+        transform: translateY(8px);
+    }
+
+    .placement-hint.is-visible {
+        transform: none;
+    }
 }

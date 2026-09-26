@@ -6,29 +6,33 @@ import { playerInventory } from '../state/Inventory';
 import { playerIslandLayout } from '../state/IslandLayout';
 import { ScreenToWorld } from './CameraMath';
 import { PlacedItemsLayer } from './PlacedItemsLayer';
+import { IslandGround } from './IslandGround';
 import { PlayPlacementImpact } from '../effects/PlacementImpactEffect';
 
 const placementSettings = {
     previewAlpha: 0.75,
     invalidTint: 0xff6b6b,
     // Keeps the preview above everything else while it's being moved
-    previewDepth: 100000
+    previewDepth: 100000,
+    // How much of the bottom of an item's footprint has to be on grass or sand; the rest may overlap
+    // what's behind it (like a cliff face), so items fit on the thin sand strips too
+    groundedBaseHeightPx: 6
 };
 
-// Lets the player move a newly bought item around and drop it on free ground
+// Lets the player move a newly bought item around and drop it on free grass or sand
 export class ItemPlacementController
 {
     private scene: Scene;
-    private placeableArea: Phaser.Geom.Rectangle;
+    private ground: IslandGround;
     private itemsLayer: PlacedItemsLayer;
     private previewItem?: PlacedItem;
     private isPreviewValid = false;
     private hasPointerMovedSinceStart = false;
 
-    constructor (scene: Scene, placeableArea: Phaser.Geom.Rectangle, itemsLayer: PlacedItemsLayer)
+    constructor (scene: Scene, ground: IslandGround, itemsLayer: PlacedItemsLayer)
     {
         this.scene = scene;
-        this.placeableArea = placeableArea;
+        this.ground = ground;
         this.itemsLayer = itemsLayer;
 
         scene.input.mouse?.disableContextMenu();
@@ -37,6 +41,7 @@ export class ItemPlacementController
         scene.input.keyboard?.on('keydown-ESC', this.CancelPlacement, this);
         scene.events.on(Scenes.Events.UPDATE, this.HandleUpdate, this);
         EventBus.on(GameEvents.PlacementRequested, this.HandlePlacementRequested, this);
+        EventBus.on(GameEvents.PlacementCancelRequested, this.CancelPlacement, this);
         EventBus.on(GameEvents.UiPanelToggled, this.HandleUiPanelToggled, this);
         scene.events.once(Scenes.Events.SHUTDOWN, this.Destroy, this);
     }
@@ -57,7 +62,11 @@ export class ItemPlacementController
 
         this.CancelPlacement();
 
-        this.previewItem = new PlacedItem(this.scene, this.placeableArea.centerX, this.placeableArea.centerY, item);
+        // Starts in the middle of the island until the pointer moves
+        const groundBounds = this.ground.GetBounds();
+        const startPoint = this.ground.FindNearestStandablePoint(groundBounds.centerX, groundBounds.centerY);
+
+        this.previewItem = new PlacedItem(this.scene, startPoint.x, startPoint.y, item);
         this.previewItem.setAlpha(placementSettings.previewAlpha);
         this.previewItem.setDepth(placementSettings.previewDepth);
         this.hasPointerMovedSinceStart = false;
@@ -195,7 +204,11 @@ export class ItemPlacementController
 
     private IsFootprintFree (footprint: Phaser.Geom.Rectangle): boolean
     {
-        if (!Geom.Rectangle.ContainsRect(this.placeableArea, footprint))
+        const baseHeight = Math.min(footprint.height, placementSettings.groundedBaseHeightPx);
+        const base = new Geom.Rectangle(footprint.x, footprint.bottom - baseHeight, footprint.width, baseHeight);
+
+        // The item has to stand on grass or sand
+        if (!this.ground.IsAreaWalkable(base))
         {
             return false;
         }
@@ -210,6 +223,7 @@ export class ItemPlacementController
         this.scene.input.keyboard?.off('keydown-ESC', this.CancelPlacement, this);
         this.scene.events.off(Scenes.Events.UPDATE, this.HandleUpdate, this);
         EventBus.off(GameEvents.PlacementRequested, this.HandlePlacementRequested, this);
+        EventBus.off(GameEvents.PlacementCancelRequested, this.CancelPlacement, this);
         EventBus.off(GameEvents.UiPanelToggled, this.HandleUiPanelToggled, this);
     }
 }

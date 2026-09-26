@@ -2,10 +2,10 @@ import { Scene, GameObjects, Geom, Input, Scale, Scenes, Math as PhaserMath } fr
 
 // Speeds are the fraction of the remaining distance covered each frame (at 60fps): higher = snappier
 const cameraSettings = {
-    // Default view zoom, unless the framed area needs a smaller zoom to fit in the visible screen
-    defaultZoom: 1,
+    // The default view zooms in until the framed area fills the visible screen, but no further than this
+    defaultZoom: 2,
     // Screen px kept around the framed area when zooming out to fit it
-    defaultViewPadding: 30,
+    defaultViewPadding: 20,
     // Min zoom and the keep-view threshold are multiples of the current default zoom
     minZoomFactor: 0.85,
     keepViewZoomFactor: 1.5,
@@ -17,9 +17,14 @@ const cameraSettings = {
     returnSpeed: 0.07,
     // Pointer must move this far (px) before a press counts as a drag rather than a click
     dragThreshold: 4,
-    focusZoom: 2.5,
+    // Double-clicking the cat zooms in this far (the pixel-art cat is small)
+    focusZoom: 3.5,
     focusFollowSpeed: 0.08,
-    doubleClickMs: 300
+    doubleClickMs: 300,
+    // UI covering more of the screen than this (like full-screen panels on a phone) isn't framed around
+    maxFramedCoverFraction: 0.8,
+    // Never zooms out further than this, however little of the screen is left
+    minPossibleZoom: 0.1
 };
 
 export class IslandCameraController
@@ -41,6 +46,12 @@ export class IslandCameraController
     private lastCatClickTime = 0;
     private zoomAnchorX = 0;
     private zoomAnchorY = 0;
+    // Two-finger pinch on touch screens: zooms by how far the fingers spread, pans by where they move together
+    private isPinching = false;
+    private pinchStartDistance = 1;
+    private pinchStartZoom = 1;
+    private pinchMidpointX = 0;
+    private pinchMidpointY = 0;
 
     constructor (scene: Scene, cat: GameObjects.Sprite, framedArea: Phaser.Geom.Rectangle)
     {
@@ -93,9 +104,12 @@ export class IslandCameraController
     // Call when UI covers part of the screen, so the camera frames things in the part still visible
     SetScreenInsets (leftFraction: number, bottomFraction: number, rightFraction = 0)
     {
-        this.coveredLeftFraction = PhaserMath.Clamp(leftFraction, 0, 1);
-        this.coveredRightFraction = PhaserMath.Clamp(rightFraction, 0, 1 - this.coveredLeftFraction);
-        this.coveredBottomFraction = PhaserMath.Clamp(bottomFraction, 0, 1);
+        const maxCover = cameraSettings.maxFramedCoverFraction;
+        const isSideCovered = leftFraction + rightFraction > maxCover;
+
+        this.coveredLeftFraction = isSideCovered ? 0 : PhaserMath.Clamp(leftFraction, 0, 1);
+        this.coveredRightFraction = isSideCovered ? 0 : PhaserMath.Clamp(rightFraction, 0, 1 - this.coveredLeftFraction);
+        this.coveredBottomFraction = bottomFraction > maxCover ? 0 : PhaserMath.Clamp(bottomFraction, 0, 1);
 
         if (!this.isFocusedOnCat)
         {
@@ -158,7 +172,7 @@ export class IslandCameraController
         const fitZoomX = (visibleRect.width - padding) / this.framedArea.width;
         const fitZoomY = (visibleRect.height - padding) / this.framedArea.height;
 
-        return Math.min(cameraSettings.defaultZoom, fitZoomX, fitZoomY);
+        return Math.max(cameraSettings.minPossibleZoom, Math.min(cameraSettings.defaultZoom, fitZoomX, fitZoomY));
     }
 
     // Scroll that puts a world point at the center of the visible screen area, at the given zoom
@@ -226,6 +240,14 @@ export class IslandCameraController
 
     private HandlePointerMove (pointer: Phaser.Input.Pointer)
     {
+        const pinchFingers = this.GetPinchFingers();
+
+        if (pinchFingers)
+        {
+            this.UpdatePinch(pinchFingers[0], pinchFingers[1]);
+            return;
+        }
+
         if (!this.isDragging || !pointer.isDown)
         {
             return;
@@ -239,8 +261,59 @@ export class IslandCameraController
         this.camera.scrollY -= deltaY / this.camera.zoom;
     }
 
+    // The two fingers touching the screen, when there are two
+    private GetPinchFingers (): [ Phaser.Input.Pointer, Phaser.Input.Pointer ] | undefined
+    {
+        if (!this.isInteractionEnabled || this.isFocusedOnCat)
+        {
+            return undefined;
+        }
+
+        const fingers = this.scene.input.manager.pointers.filter(pointer => pointer.isDown && pointer.wasTouch);
+
+        return fingers.length >= 2 ? [ fingers[0], fingers[1] ] : undefined;
+    }
+
+    private UpdatePinch (firstFinger: Phaser.Input.Pointer, secondFinger: Phaser.Input.Pointer)
+    {
+        const distance = Math.max(1, PhaserMath.Distance.Between(firstFinger.x, firstFinger.y, secondFinger.x, secondFinger.y));
+        const midpointX = (firstFinger.x + secondFinger.x) / 2;
+        const midpointY = (firstFinger.y + secondFinger.y) / 2;
+
+        if (this.isPinching)
+        {
+            // Both fingers moving together pans the view
+            this.camera.scrollX -= (midpointX - this.pinchMidpointX) / this.camera.zoom;
+            this.camera.scrollY -= (midpointY - this.pinchMidpointY) / this.camera.zoom;
+        }
+        else
+        {
+            this.isPinching = true;
+            this.isDragging = false;
+            this.isReturningToDefault = false;
+            this.pinchStartDistance = distance;
+            this.pinchStartZoom = this.camera.zoom;
+        }
+
+        const minZoom = this.GetDefaultZoom() * cameraSettings.minZoomFactor;
+
+        // Zooms toward the point between the fingers, like scroll-zoom does toward the mouse
+        this.targetZoom = PhaserMath.Clamp(this.pinchStartZoom * (distance / this.pinchStartDistance), minZoom, cameraSettings.maxZoom);
+        this.zoomAnchorX = midpointX;
+        this.zoomAnchorY = midpointY;
+        this.pinchMidpointX = midpointX;
+        this.pinchMidpointY = midpointY;
+    }
+
     private HandlePointerUp ()
     {
+        // Lifting a finger ends the pinch; the view stays where it was pinched to
+        if (this.isPinching)
+        {
+            this.isPinching = false;
+            return;
+        }
+
         if (!this.isDragging)
         {
             return;

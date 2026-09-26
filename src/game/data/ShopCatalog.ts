@@ -18,7 +18,8 @@ export const shopCatalog: ShopItem[] = [
         name: 'Table',
         price: 15,
         imageFile: 'table.png',
-        placedScale: 0.14,
+        // Sized to suit the 48px pixel-art cat
+        placedScale: 0.1,
         footprintHeightFraction: 0.35
     }
 ];

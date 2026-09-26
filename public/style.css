@@ -1,6 +1,8 @@
 html,
 body {
     overflow: hidden;
+    /* No pull-to-refresh or rubber-band scrolling on phones */
+    overscroll-behavior: none;
 }
 
 body {
@@ -17,15 +19,22 @@ body {
     overflow: hidden;
     width: 100%;
     height: 100%;
+    /* Taps register straight away on phones (no waiting to see if it's a double-tap zoom) */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #game-container canvas {
     display: block;
+    /* The game handles its own dragging and pinch-zooming */
+    touch-action: none;
 }
 
 #app {
     width: 100%;
     height: 100vh;
+    /* On phones, only the height actually visible between the browser's toolbars (same as 100vh on computers) */
+    height: 100dvh;
     overflow: hidden;
     display: flex;
     justify-content: center;

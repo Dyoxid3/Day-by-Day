@@ -6,11 +6,11 @@ import { RequestCoinReward } from './CoinRewards';
 export const coinTextureKey = 'coin';
 
 const coinDropSettings = {
-    coinScale: 0.28,
+    coinScale: 0.16,
     // How far beside the cat the coin lands
-    minThrowDistancePx: 18,
-    maxThrowDistancePx: 38,
-    throwHeightPx: 44,
+    minThrowDistancePx: 14,
+    maxThrowDistancePx: 28,
+    throwHeightPx: 30,
     throwDurationMs: 480,
     bounceHeightPx: 9,
     bounceDurationMs: 200,
@@ -63,10 +63,11 @@ export class VisitCoinDrops
         this.dropsLeft--;
 
         const settings = coinDropSettings;
-        const feetY = this.cat.y + this.cat.displayHeight / 2;
+        // The cat's position is where its feet are; the coin comes out of its middle
+        const feetY = this.cat.y;
         const side = Math.random() < 0.5 ? -1 : 1;
         const startX = this.cat.x;
-        const startY = this.cat.y;
+        const startY = this.cat.y - this.cat.GetStandingHeight() / 2;
         const landX = startX + side * PhaserMath.Between(settings.minThrowDistancePx, settings.maxThrowDistancePx);
         const landY = feetY + PhaserMath.Between(-4, 8);
         const coin = this.scene.add.image(startX, startY, coinTextureKey);

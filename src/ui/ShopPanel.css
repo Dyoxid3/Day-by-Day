@@ -93,9 +93,24 @@
     transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
 }
 
-.shop-item-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--ui-shadow);
+@media (hover: hover) {
+    .shop-item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--ui-shadow);
+    }
+}
+
+/* Phones: the shop takes the whole screen (above the top-left buttons), closed with its × */
+@media (max-width: 600px) {
+    .shop-panel {
+        --shop-top-space: 16px;
+
+        z-index: 4;
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-radius: 0;
+    }
 }
 
 .shop-item-image {

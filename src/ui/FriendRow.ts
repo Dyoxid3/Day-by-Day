@@ -6,18 +6,15 @@ import './FriendRow.css';
 
 export interface FriendRowOptions
 {
-    // Smaller, with icon-only buttons (for the bottom panel)
-    isCompact: boolean;
     // Called just before sailing off, e.g. so a panel can close
     onVisitStarting?: () => void;
 }
 
 // One friend with their streak and today's progress, plus buttons to cheer them on or sail to their island
-export function CreateFriendRow (friend: FriendSummary, options: FriendRowOptions): HTMLDivElement
+export function CreateFriendRow (friend: FriendSummary, options: FriendRowOptions = {}): HTMLDivElement
 {
     const row = document.createElement('div');
     row.className = 'friend-row';
-    row.classList.toggle('is-compact', options.isCompact);
     row.dataset.username = friend.username;
 
     const info = document.createElement('div');
@@ -31,7 +28,7 @@ export function CreateFriendRow (friend: FriendSummary, options: FriendRowOption
     {
         const visitingTag = document.createElement('span');
         visitingTag.className = 'friend-tag';
-        visitingTag.textContent = options.isCompact ? '⛵ here' : '⛵ On your island';
+        visitingTag.textContent = '⛵ On your island';
         nameLine.append(visitingTag);
     }
 
@@ -47,7 +44,7 @@ export function CreateFriendRow (friend: FriendSummary, options: FriendRowOption
     const cheerButton = document.createElement('button');
     cheerButton.type = 'button';
     cheerButton.className = 'friend-button';
-    cheerButton.textContent = options.isCompact ? '💌' : '💌 Cheer';
+    cheerButton.textContent = '💌 Cheer';
     cheerButton.title = `Send ${friend.username} some encouragement`;
     cheerButton.setAttribute('aria-label', cheerButton.title);
     cheerButton.addEventListener('click', () => {
@@ -63,13 +60,13 @@ export function CreateFriendRow (friend: FriendSummary, options: FriendRowOption
 
     if (isHere)
     {
-        visitButton.textContent = options.isCompact ? '📍' : "📍 You're here";
+        visitButton.textContent = "📍 You're here";
         visitButton.title = `You're on ${friend.username}'s island`;
         visitButton.disabled = true;
     }
     else
     {
-        visitButton.textContent = options.isCompact ? '⛵' : '⛵ Visit';
+        visitButton.textContent = '⛵ Visit';
         visitButton.title = `Sail to ${friend.username}'s island`;
         visitButton.disabled = onlineSession.IsTraveling();
         visitButton.addEventListener('click', () => SailToFriend(friend.username, options.onVisitStarting));
@@ -78,7 +75,7 @@ export function CreateFriendRow (friend: FriendSummary, options: FriendRowOption
     visitButton.setAttribute('aria-label', visitButton.title);
     actions.append(cheerButton, visitButton);
 
-    row.append(CreateAvatar(friend.username, options.isCompact ? 'small' : 'medium', friend.isOnline), info, actions);
+    row.append(CreateAvatar(friend.username, 'medium', friend.isOnline), info, actions);
 
     return row;
 }

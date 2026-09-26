@@ -46,6 +46,13 @@
     font-weight: 700;
 }
 
+/* Phones: the section tabs above take some of the height too */
+@container (max-width: 600px) {
+    .progress-ring {
+        --ring-heading-space: 80px;
+    }
+}
+
 /* Soft glow once every task for the day is done */
 .progress-ring.is-complete .progress-ring-graphic {
     filter: drop-shadow(0 0 10px rgba(232, 163, 61, 0.55));

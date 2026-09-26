@@ -29,6 +29,17 @@
     transform: translateX(0);
 }
 
+/* Phones: the whole screen (above the top-left buttons), closed with its × */
+@media (max-width: 600px) {
+    .profile-panel {
+        z-index: 4;
+        width: 100%;
+        min-width: 0;
+        border-left: none;
+        border-radius: 0;
+    }
+}
+
 .profile-header {
     display: flex;
     align-items: center;

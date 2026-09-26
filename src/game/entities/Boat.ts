@@ -7,7 +7,7 @@ export const boatSettings = {
     // Which way the art's front points; the boat flips to face where it's sailing
     imageFacesRight: true,
     placeholderEmoji: '⛵',
-    placeholderFontSizePx: 88,
+    placeholderFontSizePx: 64,
     placeholderFacesRight: false,
     bobHeightPx: 3,
     bobDurationMs: 1400,

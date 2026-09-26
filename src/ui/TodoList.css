@@ -236,6 +236,14 @@
     background: rgba(176, 74, 58, 0.12);
 }
 
+/* Touch screens can't hover, so the trash button always shows (a little faded) */
+@media (hover: none) {
+    .todo-task-delete {
+        opacity: 0.6;
+        transform: none;
+    }
+}
+
 .todo-task-delete-icon {
     width: 18px;
     height: 18px;
