@@ -1,8 +1,7 @@
 // The gentle helpers: small requests to Google Gemini for suggesting smaller steps for a big task and a kinder name
 // for a harsh one. It runs inside the Vite dev server (see vite/config.dev.mjs), so the
 // API key stays on this computer and never reaches the browser.
-// The key comes from GEMINI_API_KEY in .env.local (which git ignores), or the host's settings when the game is hosted
-// (see server/ProductionServer.mjs). GEMINI_MODEL can pick a different model.
+// The key comes from GEMINI_API_KEY in .env.local (which git ignores). GEMINI_MODEL can pick a different model.
 // The game only asks for these when the player has turned the gentle helpers on in their profile.
 
 import { ApiError, ReadJsonBody, SendJson } from './OnlinePrototypeServer.mjs';
@@ -70,7 +69,7 @@ export function GentleHelperServer ({ apiKey, model } = {})
         server.middlewares.use('/ai', (request, response) => helper.HandleRequest(request, response));
         server.config.logger.info(apiKey
             ? `  [gentle helpers] On, using ${model || helperSettings.defaultModel}`
-            : '  [gentle helpers] Off: add GEMINI_API_KEY to .env.local (or the host\'s settings) to turn them on');
+            : '  [gentle helpers] Off: add GEMINI_API_KEY to .env.local to turn them on');
     };
 
     return {
@@ -199,7 +198,7 @@ class GentleHelper
     {
         if (!this.apiKey)
         {
-            throw new ApiError(503, "The gentle helpers aren't set up on this server (it needs a GEMINI_API_KEY)");
+            throw new ApiError(503, "The gentle helpers aren't set up on this server (add GEMINI_API_KEY to .env.local)");
         }
 
         this.CheckRateLimit();
