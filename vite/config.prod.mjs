@@ -2,8 +2,8 @@ import { defineConfig, loadEnv } from 'vite';
 import { OnlinePrototypeServer } from '../server/OnlinePrototypeServer.mjs';
 import { GentleHelperServer } from '../server/GentleHelperServer.mjs';
 
-// GEMINI_API_KEY (and optionally GEMINI_MODEL) for the gentle helpers, from .env.local (which git ignores).
-// Only the preview server reads them; they're never built into the game.
+// GEMINI_API_KEY (and optionally GEMINI_MODEL) for the gentle helpers, from .env.local (which git ignores). Only the
+// preview server reads them; they're never built into the game. A hosted game uses server/ProductionServer.mjs instead.
 const env = loadEnv('production', process.cwd(), '');
 
 const phasermsg = () => {

@@ -91,13 +91,27 @@ visits), which saves to `server/data/online-db.json`.
 GEMINI_API_KEY=your-key-here
 ```
 
-Restart `npm run dev` after adding it.
+Restart `npm run dev` after adding it. Everything else works without it.
+
+## Playing it online
+
+The game can be hosted so anyone can play from a link, on any computer or phone, with nothing to install.
+`npm run build` then `npm start` runs the finished game with its online features and Gemini helpers
+(`server/ProductionServer.mjs`), and `render.yaml` sets this up on [Render](https://render.com) for free:
+
+1. In Render, choose **New > Blueprint** and pick this repository.
+2. Paste a Gemini key when it asks for `GEMINI_API_KEY`. It stays in Render's settings, never in the repository.
+3. Once it's deployed, share the link Render gives you.
+
+Free hosting sleeps when nobody's playing (the first visit after that takes about a minute to wake it), and online
+accounts and friends reset whenever it restarts.
 
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Development server with hot reloading, at `http://localhost:8080` |
 | `npm run dev-phone` | The same, reachable from a phone on the same Wi-Fi |
 | `npm run build` | Production build in `dist` |
+| `npm start` | Run the production build with its online features, for hosting |
 | `npm run dev-nolog` / `npm run build-nolog` | The same, without the Phaser template's anonymous usage ping (see `log.js`) |
 
 ## Demo controls

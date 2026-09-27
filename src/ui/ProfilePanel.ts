@@ -354,7 +354,7 @@ export class ProfilePanel
         {
             const unavailableElement = document.createElement('p');
             unavailableElement.className = 'profile-section-note is-warning';
-            unavailableElement.textContent = "Not set up on this game server yet: it needs a GEMINI_API_KEY in .env.local.";
+            unavailableElement.textContent = "Not set up on this game server yet: it needs a GEMINI_API_KEY.";
             this.helpersSection.append(unavailableElement);
         }
     }

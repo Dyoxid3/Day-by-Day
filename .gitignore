@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+# Keys go in .env.local (or the host's settings), never in the repository
+.env
 
 # Online prototype save data (accounts, friends, islands)
 server/data
