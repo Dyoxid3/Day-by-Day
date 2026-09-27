@@ -5,7 +5,7 @@
     gap: 5px;
     color: #ffd23f;
     font-family: var(--ui-font);
-    font-size: 20px;
+    font-size: var(--ui-text-large);
     font-weight: 900;
     white-space: nowrap;
     pointer-events: none;
@@ -18,13 +18,15 @@
         0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
+/* Pixel-art pill (the pixel-pill class) */
 .coin-reward-boost {
-    padding: 1px 7px;
-    background: linear-gradient(135deg, #ffcf4a, #f29d1f);
-    border: 1.5px solid #ffffff;
+    --pill-size: 24px;
+    --pixel-tint: var(--tint-gold);
+
+    padding: 2px 8px;
     border-radius: 999px;
     color: #ffffff;
-    font-size: 12px;
+    font-size: var(--ui-text-small);
     font-weight: 800;
     text-shadow: 0 1px 1px rgba(150, 80, 0, 0.5);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);

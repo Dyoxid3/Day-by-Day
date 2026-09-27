@@ -1,4 +1,7 @@
+/* Pixel-art pill (the pixel-pill class), like the button and caption below */
 .visit-banner {
+    --pill-size: 50px;
+
     position: absolute;
     top: 14px;
     left: 50%;
@@ -7,15 +10,13 @@
     align-items: center;
     gap: 12px;
     max-width: calc(100% - 180px);
-    padding: 6px 6px 6px 16px;
+    padding: 8px 8px 8px 18px;
     box-sizing: border-box;
-    background: var(--ui-background);
-    border: 2px solid var(--ui-border);
     border-radius: 999px;
     box-shadow: var(--ui-shadow);
     color: var(--ui-text);
     font-family: var(--ui-font);
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     white-space: nowrap;
     opacity: 0;
     visibility: hidden;
@@ -36,14 +37,17 @@
 }
 
 .visit-banner-home {
+    --pill-size: 34px;
+    --pixel-tint: var(--tint-blue);
+
     flex-shrink: 0;
     padding: 7px 14px;
-    background: #4f8fd9;
+    background: none;
     border: none;
     border-radius: 999px;
     color: #ffffff;
     font: inherit;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
     transition: filter 0.12s, transform 0.12s;
@@ -64,17 +68,18 @@
 
 /* Shown over the sea while sailing between islands */
 .travel-caption {
+    --pill-size: 54px;
+
     position: absolute;
     top: 38%;
     left: 50%;
     z-index: 4;
     padding: 12px 22px;
-    background: rgba(255, 255, 255, 0.92);
     border-radius: 999px;
     box-shadow: 0 6px 20px rgba(0, 40, 90, 0.25);
     color: #1d4f80;
     font-family: var(--ui-font);
-    font-size: 18px;
+    font-size: var(--ui-text-large);
     font-weight: 800;
     white-space: nowrap;
     pointer-events: none;
@@ -97,13 +102,16 @@
 /* Phones: the banner sits beside the bell (clear of the coin counter), without the word "Visiting" */
 @media (max-width: 600px) {
     .visit-banner {
-        top: 78px;
+        --pill-size: 46px;
+
+        /* Level with the bell's row and clear of the HUD's column (both sized in Hud.css) */
+        top: calc(var(--hud-edge-gap) + var(--hud-button-size) + var(--hud-row-gap));
         right: 12px;
         left: auto;
-        max-width: calc(100% - 92px);
+        max-width: calc(100% - var(--hud-edge-gap) * 2 - var(--hud-button-size) - 12px);
         gap: 8px;
-        padding: 4px 4px 4px 12px;
-        font-size: 13px;
+        padding: 6px 6px 6px 14px;
+        font-size: var(--ui-text-small);
         transform: translateY(-12px);
     }
 
@@ -116,10 +124,12 @@
     }
 
     .travel-caption {
+        --pill-size: 44px;
+
         max-width: calc(100% - 40px);
         overflow: hidden;
         box-sizing: border-box;
-        font-size: 16px;
+        font-size: var(--ui-text-small);
         text-overflow: ellipsis;
     }
 }

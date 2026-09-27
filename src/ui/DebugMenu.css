@@ -1,0 +1,100 @@
+/* Development only: a button at the right edge, opening a small panel beside it */
+.debug-toggle {
+    --pill-size: 32px;
+    --pixel-tint: var(--tint-dark);
+
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    z-index: 7;
+    padding: 6px 14px;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: #ffffff;
+    font: inherit;
+    font-size: var(--ui-text-small);
+    cursor: pointer;
+    transform: translateY(-50%);
+}
+
+.debug-panel {
+    position: absolute;
+    /* Centered on the toggle button, but never taller than the screen (the game container clips overflow) */
+    top: 50%;
+    right: 12px;
+    z-index: 7;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    width: min(300px, calc(100% - 24px));
+    max-height: calc(100% - 24px);
+    padding: 14px;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px dashed var(--ui-text-muted);
+    border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateY(-50%);
+}
+
+.debug-panel.is-open {
+    display: flex;
+}
+
+.debug-title {
+    margin: 0;
+    font-size: var(--ui-text-small);
+}
+
+.debug-clock {
+    margin: 0;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+}
+
+.debug-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.debug-section-title {
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+}
+
+.debug-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.debug-button,
+.debug-time-input {
+    padding: 5px 9px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 8px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-small);
+}
+
+.debug-button {
+    cursor: pointer;
+}
+
+.debug-button:hover {
+    border-color: var(--ui-accent);
+}
+
+/* Hidden until the 1 key is pressed */
+.debug-toggle[hidden] {
+    display: none;
+}

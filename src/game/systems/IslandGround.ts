@@ -115,6 +115,26 @@ export class IslandGround
         return this.GetCellCenter(cells[Math.floor(Math.random() * cells.length)]);
     }
 
+    // A standable spot picked from a number, always the same one for the same number (so things placed this way,
+    // like lanterns, keep their spot every time the island loads)
+    FindStandablePointFromSeed (seed: number): GroundPoint | undefined
+    {
+        const cells = this.grid.standableCells;
+
+        if (cells.length === 0)
+        {
+            return undefined;
+        }
+
+        // A quick integer hash, so nearby seeds land far apart
+        let hash = Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b);
+
+        hash = Math.imul(hash ^ (hash >>> 13), 0xc2b2ae35);
+        hash ^= hash >>> 16;
+
+        return this.GetCellCenter(cells[(hash >>> 0) % cells.length]);
+    }
+
     // The standable spot nearest a point, e.g. to start a cat or an item preview somewhere sensible
     FindNearestStandablePoint (x: number, y: number): GroundPoint
     {

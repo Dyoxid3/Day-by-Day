@@ -1,23 +1,27 @@
 import { EventBus, GameEvents, type UiPanelToggledPayload } from '../game/EventBus';
 import { GetCompletionPercent } from '../game/data/TaskTypes';
 import { playerCoinBoost } from '../game/state/CoinBoost';
-import { playerStreak } from '../game/state/DailyStreak';
+import { playerStars } from '../game/state/Stars';
+import { comebacks } from '../game/state/Comebacks';
+import { gentleHelpers } from '../game/state/GentleHelpers';
+import { letters } from '../game/state/Letters';
 import { playerIslandLayout } from '../game/state/IslandLayout';
 import { playerTaskList } from '../game/state/TaskList';
 import { playerWallet } from '../game/state/Wallet';
 import { onlineSession, RequestToast } from '../online/OnlineSession';
 import { CreateAvatar } from './UiAvatar';
 import { ShakeElement } from './UiAnimations';
-import { FormatBoostMultiplier } from './UiFormat';
+import { CreateAuthForm } from './AuthForm';
+import { FormatBoostMultiplier, Pluralize } from './UiFormat';
 import { KeepTypingFromGame } from './UiKeyboard';
 import { CreateFriendRow, SortFriends } from './FriendRow';
+import { uiAssets } from './UiAssets';
 import './ProfilePanel.css';
 
 const panelId = 'profile-panel';
 
-type AuthMode = 'signup' | 'login';
-
-// Slides in from the right: your profile (or signing up / logging in), adding friends, and your friends list
+// Slides in from the right, top to bottom: your profile and stats (or signing up / logging in), your friends list,
+// adding a friend, letters to future you, the gentle helpers switch, and logging out
 export class ProfilePanel
 {
     private container: HTMLElement;
@@ -25,6 +29,10 @@ export class ProfilePanel
     private serverWarningElement: HTMLParagraphElement;
     private accountSection: HTMLDivElement;
     private friendsSection: HTMLDivElement;
+    // Logging out, at the very bottom
+    private footerSection: HTMLDivElement;
+    private lettersSection: HTMLDivElement;
+    private helpersSection: HTMLDivElement;
     private friendsTitleElement: HTMLHeadingElement;
     private friendsListElement: HTMLDivElement;
     private addFriendInput: HTMLInputElement;
@@ -32,7 +40,6 @@ export class ProfilePanel
     private addFriendStatusElement: HTMLParagraphElement;
     private statsElement?: HTMLDivElement;
     private isOpen = false;
-    private authMode: AuthMode = 'signup';
     private friendsSignature = '';
     // Briefly highlighted after being added
     private newFriendUsername?: string;
@@ -53,8 +60,8 @@ export class ProfilePanel
 
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
-        closeButton.className = 'profile-close';
-        closeButton.textContent = '×';
+        closeButton.className = 'profile-close pixel-circle is-shape-on-hover';
+        closeButton.textContent = 'x';
         closeButton.setAttribute('aria-label', 'Close profile');
         closeButton.addEventListener('click', () => this.SetOpen(false));
 
@@ -65,7 +72,7 @@ export class ProfilePanel
 
         this.serverWarningElement = document.createElement('p');
         this.serverWarningElement.className = 'profile-warning';
-        this.serverWarningElement.textContent = "⚠️ Can't reach the game server. Is `npm run dev` still running?";
+        this.serverWarningElement.textContent = "Can't reach the game server. Is `npm run dev` still running?";
         this.serverWarningElement.hidden = true;
 
         this.accountSection = document.createElement('div');
@@ -73,6 +80,14 @@ export class ProfilePanel
 
         this.friendsSection = document.createElement('div');
         this.friendsSection.className = 'profile-friends';
+
+        this.friendsTitleElement = CreateSectionTitle('Friends');
+
+        this.friendsListElement = document.createElement('div');
+        this.friendsListElement.className = 'profile-friends-list';
+
+        const addFriendArea = document.createElement('div');
+        addFriendArea.className = 'profile-add-friend';
 
         const addFriendTitle = CreateSectionTitle('Add a friend');
 
@@ -101,13 +116,26 @@ export class ProfilePanel
         this.addFriendStatusElement = document.createElement('p');
         this.addFriendStatusElement.className = 'add-friend-status';
 
-        this.friendsTitleElement = CreateSectionTitle('Friends');
+        addFriendArea.append(addFriendTitle, addFriendForm, this.addFriendStatusElement);
+        // The friends themselves first, right below the stats, with adding one underneath
+        this.friendsSection.append(this.friendsTitleElement, this.friendsListElement, addFriendArea);
+        this.lettersSection = document.createElement('div');
+        this.lettersSection.className = 'profile-section profile-letters';
+        this.helpersSection = document.createElement('div');
+        this.helpersSection.className = 'profile-section profile-helpers';
+        this.footerSection = document.createElement('div');
+        this.footerSection.className = 'profile-footer';
+        this.RenderLetters();
+        this.RenderHelpers();
 
-        this.friendsListElement = document.createElement('div');
-        this.friendsListElement.className = 'profile-friends-list';
-
-        this.friendsSection.append(addFriendTitle, addFriendForm, this.addFriendStatusElement, this.friendsTitleElement, this.friendsListElement);
-        bodyElement.append(this.serverWarningElement, this.accountSection, this.friendsSection);
+        bodyElement.append(
+            this.serverWarningElement,
+            this.accountSection,
+            this.friendsSection,
+            this.lettersSection,
+            this.helpersSection,
+            this.footerSection
+        );
         this.panelElement.append(headerElement, bodyElement);
         container.append(this.panelElement);
         KeepTypingFromGame(this.panelElement);
@@ -128,7 +156,15 @@ export class ProfilePanel
         EventBus.on(GameEvents.TravelStarted, () => this.RenderFriends(true));
         EventBus.on(GameEvents.VisitStateChanged, () => this.RenderFriends(true));
         EventBus.on(GameEvents.TravelFinished, () => this.RenderFriends(true));
-        EventBus.on(GameEvents.StreakChanged, () => this.UpdateStats());
+        EventBus.on(GameEvents.StarsChanged, () => this.UpdateStats());
+        EventBus.on(GameEvents.PlayerDataLoaded, () => {
+            this.UpdateStats();
+            this.RenderLetters();
+            this.RenderHelpers();
+        });
+        EventBus.on(GameEvents.ComebackCounted, () => this.UpdateStats());
+        EventBus.on(GameEvents.LettersChanged, () => this.RenderLetters());
+        EventBus.on(GameEvents.GentleHelpersChanged, () => this.RenderHelpers());
         EventBus.on(GameEvents.TasksChanged, () => this.UpdateStats());
         EventBus.on(GameEvents.CoinBoostChanged, () => this.UpdateStats());
         EventBus.on(GameEvents.CoinsChanged, () => this.UpdateStats());
@@ -165,7 +201,7 @@ export class ProfilePanel
             isOpen: this.isOpen,
             coveredEdge: 'right',
             // Measured rather than assumed, since the panel has a minimum width on small screens
-            coveredFraction: this.panelElement.offsetWidth / this.container.clientWidth
+            coveredFraction: this.panelElement.getBoundingClientRect().width / this.container.getBoundingClientRect().width
         };
 
         EventBus.emit(GameEvents.UiPanelToggled, payload);
@@ -197,7 +233,7 @@ export class ProfilePanel
 
         const subtitleElement = document.createElement('div');
         subtitleElement.className = 'profile-subtitle';
-        subtitleElement.textContent = username ? 'Online · friends can visit your island' : 'Playing offline';
+        subtitleElement.textContent = username ? 'Online - friends can visit your island' : 'Playing offline';
 
         identity.append(nameElement, subtitleElement);
         card.append(CreateAvatar(username, 'large', username ? true : undefined), identity);
@@ -215,10 +251,11 @@ export class ProfilePanel
             logOutButton.addEventListener('click', async () => {
                 logOutButton.disabled = true;
                 await onlineSession.LogOut();
-                RequestToast('👋', 'Logged out', 'Your island is still here. Log back in any time.');
+                RequestToast('Logged out', 'Your island is still here. Log back in any time.');
             });
 
-            this.accountSection.replaceChildren(card, this.statsElement, logOutButton);
+            this.accountSection.replaceChildren(card, this.statsElement);
+            this.footerSection.replaceChildren(logOutButton);
         }
         else
         {
@@ -226,7 +263,9 @@ export class ProfilePanel
             pitch.className = 'profile-pitch';
             pitch.textContent = 'Make a free account to add friends, sail to their islands and cheer each other on.';
 
-            this.accountSection.replaceChildren(card, this.statsElement, pitch, this.CreateAuthForm());
+            // Where the friends would be: signing up is how you get them
+            this.accountSection.replaceChildren(card, this.statsElement, pitch, CreateAuthForm());
+            this.footerSection.replaceChildren();
         }
     }
 
@@ -241,124 +280,83 @@ export class ProfilePanel
         const progress = playerTaskList.GetProgress();
 
         this.statsElement.replaceChildren(
-            CreateStat(`🔥 ${playerStreak.GetStreakDays()}`, 'day streak'),
+            CreateStat(String(playerStars.GetStars()), 'stars', false, uiAssets.star),
             CreateStat(`${GetCompletionPercent(progress)}%`, 'done today'),
-            CreateStat(`${progress.completedCount}/${progress.totalCount}`, 'tasks done'),
-            CreateStat(`🪙 ${playerWallet.GetCoins()}`, 'coins'),
-            CreateStat(`🪑 ${playerIslandLayout.GetPlacedItems().length}`, 'on your island'),
-            CreateStat(boostPercent > 0 ? FormatBoostMultiplier(boostPercent) : '×1', 'coin boost', boostPercent > 0)
+            CreateStat(String(comebacks.GetCount()), 'comebacks'),
+            CreateStat(String(playerWallet.GetCoins()), 'coins', false, uiAssets.coin),
+            CreateStat(String(playerIslandLayout.GetPlacedItems().length), 'props on your island'),
+            CreateStat(boostPercent > 0 ? FormatBoostMultiplier(boostPercent) : 'x1', 'coin boost', boostPercent > 0)
         );
     }
 
-    private CreateAuthForm (): HTMLElement
+    // --- Letters and gentle helpers ---
+
+    // Letters to future you (kept on this device)
+    private RenderLetters ()
     {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'auth';
+        const letterCount = letters.GetFutureLetterCount();
+        const noteElement = document.createElement('p');
+        noteElement.className = 'profile-section-note';
+        noteElement.textContent = letterCount === 0
+            ? 'Write a few kind words to yourself, and your cat will hand them to you on a harder day.'
+            : `${Pluralize(letterCount, 'letter')} saved for a harder day.`;
 
-        const tabs = document.createElement('div');
-        tabs.className = 'auth-tabs';
-        tabs.setAttribute('role', 'tablist');
+        const writeButton = document.createElement('button');
+        writeButton.type = 'button';
+        writeButton.className = 'profile-button';
+        writeButton.textContent = 'Write to future you';
+        writeButton.addEventListener('click', () => EventBus.emit(GameEvents.FutureLetterWriteRequested));
 
-        const form = document.createElement('form');
-        form.className = 'auth-form';
-        form.noValidate = true;
+        const buttonRow = document.createElement('div');
+        buttonRow.className = 'profile-section-buttons';
+        buttonRow.append(writeButton);
 
-        const usernameInput = CreateLabeledInput(form, 'Username', 'text', 'username');
-        const passwordInput = CreateLabeledInput(form, 'Password', 'password', this.authMode === 'signup' ? 'new-password' : 'current-password');
+        this.lettersSection.replaceChildren(CreateSectionTitle('Letters'), noteElement, buttonRow);
+    }
 
-        const submitButton = document.createElement('button');
-        submitButton.type = 'submit';
-        submitButton.className = 'profile-button is-primary auth-submit';
+    // The switch for the gentle helpers (Google Gemini), which are off until the player turns them on
+    private RenderHelpers ()
+    {
+        const switchInput = document.createElement('input');
+        switchInput.type = 'checkbox';
+        switchInput.checked = gentleHelpers.IsEnabled();
+        switchInput.disabled = !gentleHelpers.IsAvailable();
+        switchInput.addEventListener('change', () => gentleHelpers.SetEnabled(switchInput.checked));
 
-        const errorElement = document.createElement('p');
-        errorElement.className = 'auth-error';
-        errorElement.setAttribute('role', 'alert');
+        const switchLabel = document.createElement('label');
+        switchLabel.className = 'profile-helper-switch';
+        switchLabel.append(switchInput, 'Use Google Gemini for gentle suggestions');
 
-        const hintElement = document.createElement('p');
-        hintElement.className = 'auth-hint';
+        // What the helpers do, in a tooltip (shown on hover, or on tap on touch screens)
+        const tooltipId = 'profile-helpers-tooltip';
+        const tooltip = document.createElement('span');
+        tooltip.className = 'profile-tooltip';
+        tooltip.id = tooltipId;
+        tooltip.setAttribute('role', 'tooltip');
+        tooltip.textContent = 'Suggests smaller steps for tasks that are hard, or sound hard, and kinder names for harsh '
+            + "ones. While it's on, your task names, how hard they feel and how you're feeling today are sent to Google. "
+            + 'Your letters to yourself never are.';
 
-        form.append(submitButton, errorElement, hintElement);
+        const infoButton = document.createElement('button');
+        infoButton.type = 'button';
+        infoButton.className = 'profile-info-button pixel-circle';
+        infoButton.textContent = '?';
+        infoButton.setAttribute('aria-label', 'About the gentle helpers');
+        infoButton.setAttribute('aria-describedby', tooltipId);
 
-        const ApplyMode = () => {
-            const isSignUp = this.authMode === 'signup';
+        const switchRow = document.createElement('div');
+        switchRow.className = 'profile-helper-row';
+        switchRow.append(switchLabel, infoButton, tooltip);
 
-            submitButton.textContent = isSignUp ? 'Create account' : 'Log in';
-            hintElement.textContent = isSignUp ? '3–16 letters, numbers or _ for your username.' : '';
-            passwordInput.autocomplete = isSignUp ? 'new-password' : 'current-password';
-            errorElement.textContent = '';
+        this.helpersSection.replaceChildren(CreateSectionTitle('Gentle helpers'), switchRow);
 
-            for (const tab of tabs.children)
-            {
-                const isSelected = tab instanceof HTMLElement && tab.dataset.mode === this.authMode;
-
-                tab.classList.toggle('is-selected', isSelected);
-                tab.setAttribute('aria-selected', String(isSelected));
-            }
-        };
-
-        for (const [ mode, label ] of [ [ 'signup', 'Sign up' ], [ 'login', 'Log in' ] ] as const)
+        if (!gentleHelpers.IsAvailable())
         {
-            const tab = document.createElement('button');
-            tab.type = 'button';
-            tab.className = 'auth-tab';
-            tab.textContent = label;
-            tab.dataset.mode = mode;
-            tab.setAttribute('role', 'tab');
-            tab.addEventListener('click', () => {
-                this.authMode = mode;
-                ApplyMode();
-                usernameInput.focus();
-            });
-            tabs.append(tab);
+            const unavailableElement = document.createElement('p');
+            unavailableElement.className = 'profile-section-note is-warning';
+            unavailableElement.textContent = "Not set up on this game server yet: it needs a GEMINI_API_KEY in .env.local.";
+            this.helpersSection.append(unavailableElement);
         }
-
-        form.addEventListener('submit', async event => {
-            event.preventDefault();
-
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value;
-
-            if (username === '' || password === '')
-            {
-                const emptyInput = username === '' ? usernameInput : passwordInput;
-
-                ShakeElement(emptyInput);
-                emptyInput.focus();
-                return;
-            }
-
-            const isSignUp = this.authMode === 'signup';
-
-            submitButton.disabled = true;
-            submitButton.textContent = isSignUp ? 'Creating account…' : 'Logging in…';
-            errorElement.textContent = '';
-
-            try
-            {
-                if (isSignUp)
-                {
-                    await onlineSession.SignUp(username, password);
-                    RequestToast('🎉', `Welcome, ${onlineSession.GetUsername()}!`, 'Add a friend by their username to get started.', 'reward');
-                }
-                else
-                {
-                    await onlineSession.LogIn(username, password);
-                    RequestToast('🏝️', `Welcome back, ${onlineSession.GetUsername()}!`, 'Your island has been loaded.', 'reward');
-                }
-            }
-            catch (error)
-            {
-                submitButton.disabled = false;
-                ApplyMode();
-                errorElement.textContent = error instanceof Error ? error.message : 'Something went wrong';
-                ShakeElement(form);
-            }
-        });
-
-        ApplyMode();
-        wrapper.append(tabs, form);
-
-        return wrapper;
     }
 
     // --- Friends ---
@@ -375,14 +373,14 @@ export class ProfilePanel
         }
 
         this.addFriendButton.disabled = true;
-        this.SetAddFriendStatus('Looking for them…', '');
+        this.SetAddFriendStatus('Looking for them...', '');
 
         try
         {
             const friend = await onlineSession.AddFriend(username);
 
             this.addFriendInput.value = '';
-            this.SetAddFriendStatus(`🎉 ${friend.username} is now your friend!`, 'is-success');
+            this.SetAddFriendStatus(`${friend.username} is now your friend.`, 'is-success');
             this.newFriendUsername = friend.username;
             this.RenderFriends(true);
         }
@@ -428,7 +426,7 @@ export class ProfilePanel
         {
             const emptyMessage = document.createElement('p');
             emptyMessage.className = 'profile-empty';
-            emptyMessage.textContent = "No friends yet. Add someone by their username above, then you can cheer them on and sail to their island.";
+            emptyMessage.textContent = "No friends yet. Add someone by their username below, then you can cheer them on and sail to their island.";
             this.friendsListElement.replaceChildren(emptyMessage);
             return;
         }
@@ -461,7 +459,8 @@ function CreateSectionTitle (text: string): HTMLHeadingElement
     return title;
 }
 
-function CreateStat (value: string, label: string, isHighlighted = false): HTMLDivElement
+// iconSource: a pixel-art picture shown before the value, like the star
+function CreateStat (value: string, label: string, isHighlighted = false, iconSource?: string): HTMLDivElement
 {
     const stat = document.createElement('div');
     stat.className = 'profile-stat';
@@ -469,7 +468,18 @@ function CreateStat (value: string, label: string, isHighlighted = false): HTMLD
 
     const valueElement = document.createElement('span');
     valueElement.className = 'profile-stat-value';
-    valueElement.textContent = value;
+
+    if (iconSource)
+    {
+        const icon = document.createElement('img');
+        icon.className = 'profile-stat-icon';
+        icon.src = iconSource;
+        icon.alt = '';
+        icon.draggable = false;
+        valueElement.append(icon);
+    }
+
+    valueElement.append(value);
 
     const labelElement = document.createElement('span');
     labelElement.className = 'profile-stat-label';
@@ -478,24 +488,4 @@ function CreateStat (value: string, label: string, isHighlighted = false): HTMLD
     stat.append(valueElement, labelElement);
 
     return stat;
-}
-
-function CreateLabeledInput (form: HTMLFormElement, labelText: string, type: string, autocomplete: AutoFill): HTMLInputElement
-{
-    const label = document.createElement('label');
-    label.className = 'auth-field';
-
-    const labelTextElement = document.createElement('span');
-    labelTextElement.textContent = labelText;
-
-    const input = document.createElement('input');
-    input.type = type;
-    input.className = 'profile-input';
-    input.autocomplete = autocomplete;
-    input.maxLength = 40;
-
-    label.append(labelTextElement, input);
-    form.append(label);
-
-    return input;
 }

@@ -40,6 +40,16 @@ class Wallet
         return true;
     }
 
+    ToSaveData (): { coins: number }
+    {
+        return { coins: this.coins };
+    }
+
+    LoadSaveData (data: { coins?: number } | undefined)
+    {
+        this.coins = Math.max(0, Math.floor(data?.coins ?? startingCoins));
+    }
+
     private EmitChange (change: number)
     {
         const payload: CoinsChangedPayload = { coins: this.coins, change };

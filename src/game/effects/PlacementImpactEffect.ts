@@ -1,4 +1,5 @@
 import { Scene, GameObjects, TintModes } from 'phaser';
+import { EventBus, GameEvents } from '../EventBus';
 
 const impactSettings = {
     dropHeightPx: 26,
@@ -48,6 +49,7 @@ export function PlayPlacementImpact (scene: Scene, item: GameObjects.Image)
             SpawnDustRing(scene, item);
             SpawnDustPuffs(scene, item);
             scene.cameras.main.shake(settings.cameraShakeDurationMs, settings.cameraShakeIntensity);
+            EventBus.emit(GameEvents.PropLanded);
         }
     });
 }

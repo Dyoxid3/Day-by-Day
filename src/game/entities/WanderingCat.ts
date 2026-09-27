@@ -1,9 +1,18 @@
 import { Scene, GameObjects, Math as PhaserMath } from 'phaser';
-import { catAppearance, catTextureKeys, GetCatFaceTextureKey, type CatExpression } from '../data/CatAppearance';
+import {
+    catAppearance,
+    catTextureKeys,
+    GetCatAnimationKey,
+    GetCatFaceTextureKey,
+    type CatExpression,
+    type CatFacing
+} from '../data/CatAppearance';
 import type { IslandGround } from '../systems/IslandGround';
 
 const catSettings = {
     walkSpeedPxPerSecond: 70,
+    // How much faster the cat moves when hurrying: to a boat, or over to a prop that was just placed
+    runSpeedMultiplier: 3.5,
     celebrationHopCount: 3,
     celebrationHopHeightPx: 14,
     // One full hop (up and back down)
@@ -21,19 +30,24 @@ const catSettings = {
     // Random spots tried when picking where to wander next (some can't be reached in a straight line)
     wanderAttempts: 25,
     minWanderDistancePx: 24,
+    // The cat shows its back when walking up the screen more steeply than this (up per sideways)
+    backFacingSlope: 0.35,
+    // After its face changes, the cat keeps facing the camera this long so the change can be seen
+    faceFrontAfterExpressionMs: 1500,
     // Quick stretch when the face changes, so the change is noticeable
     expressionPopScale: 1.12,
     expressionPopDurationMs: 180,
-    // Name shown above visiting cats
-    nameTagFontSizePx: 12,
+    // Name shown above visiting cats (the pixel font is crisp at multiples of 8px)
+    nameTagFontSizePx: 16,
     nameTagGapPx: 3,
     // Keeps name tags above everything on the island (the item placement preview sits higher still)
     nameTagDepth: 90000
 };
 
 /**
- * The cat: body, head and face images stacked on top of each other, positioned by its feet. Picks a random
- * spot on the island's walkable ground at random intervals and wanders there. Not player-controlled.
+ * The cat: a body sprite (walking and idle animations, facing the camera or away), with its head and face
+ * drawn on top, positioned by its feet. Picks a random spot on the island's walkable ground at random
+ * intervals and wanders there. Not player-controlled.
  */
 export class WanderingCat extends GameObjects.Sprite
 {
@@ -43,6 +57,12 @@ export class WanderingCat extends GameObjects.Sprite
     private headImage: GameObjects.Image;
     private faceImage: GameObjects.Image;
     private expression: CatExpression = 'default';
+    private facing: CatFacing = 'front';
+    // Which way the current walk points; the cat shows it unless it's turned to the camera for a new face
+    private walkFacing: CatFacing = 'front';
+    private faceFrontUntil = 0;
+    private isWalking = false;
+    private isIdleAnimationEnabled = true;
     // Size when not mid-animation
     private restingScale = 1;
     private expressionPopTween?: Phaser.Tweens.Tween;
@@ -57,15 +77,21 @@ export class WanderingCat extends GameObjects.Sprite
     private isAirborne = false;
     // Overrides the next random wander destination once
     private nextWanderTarget?: { x: number, y: number };
+    // The overridden destination above should be hurried to (running to see a newly placed prop)
+    private nextWanderIsRun = false;
+    // Where the current wander is heading, so it can carry on after pausing to show a new face
+    private walkTarget?: { x: number, y: number };
     private nameTag?: GameObjects.Text;
     // While aboard a boat, the cat draws just in front of it instead of sorting by where its feet are
     private ridingBoat: { depth: number } | null = null;
 
     constructor (scene: Scene, x: number, y: number, ground: IslandGround, minIntervalMs = 2000, maxIntervalMs = 5000)
     {
-        super(scene, x, y, catTextureKeys.body);
+        super(scene, x, y, catTextureKeys.bodySheet, catAppearance.bodyFrames.front.stand);
 
         const feetOrigin = catAppearance.feetLine / catAppearance.frameSize;
+
+        CreateCatAnimations(scene);
 
         this.ground = ground;
         this.minIntervalMs = minIntervalMs;
@@ -92,6 +118,12 @@ export class WanderingCat extends GameObjects.Sprite
         return (catAppearance.feetLine - catAppearance.headTop) * this.restingScale;
     }
 
+    // A sad cat stands still instead of doing its idle breathing
+    SetIdleAnimationEnabled (isEnabled: boolean)
+    {
+        this.isIdleAnimationEnabled = isEnabled;
+    }
+
     SetExpression (expression: CatExpression)
     {
         if (expression === this.expression)
@@ -101,6 +133,12 @@ export class WanderingCat extends GameObjects.Sprite
 
         this.expression = expression;
         this.faceImage.setTexture(GetCatFaceTextureKey(expression));
+
+        // During boat trips the cat keeps going and just swaps faces
+        if (!this.isWanderingPaused)
+        {
+            this.PauseToShowFace();
+        }
 
         this.expressionPopTween?.stop();
         this.setScale(this.restingScale * catSettings.expressionPopScale);
@@ -129,13 +167,13 @@ export class WanderingCat extends GameObjects.Sprite
     SetNameTag (name: string)
     {
         this.nameTag?.destroy();
-        this.nameTag = this.scene.add.text(this.x, this.y, name, {
-            fontFamily: 'system-ui, sans-serif',
+        // The pixel font only has lowercase letters
+        this.nameTag = this.scene.add.text(this.x, this.y, name.toLowerCase(), {
+            fontFamily: '"Island Pixel", system-ui, sans-serif',
             fontSize: `${catSettings.nameTagFontSizePx}px`,
-            fontStyle: 'bold',
             color: '#ffffff',
             stroke: '#3a3226',
-            strokeThickness: 3,
+            strokeThickness: 4,
             // Stays crisp when the camera zooms in
             resolution: 4
         });
@@ -179,13 +217,17 @@ export class WanderingCat extends GameObjects.Sprite
                 return;
             }
 
+            this.StartWalking(x, y);
             this.activeTween = this.scene.tweens.add({
                 targets: this,
                 x,
                 y,
                 duration: durationMs,
                 ease: 'Sine.easeInOut',
-                onComplete: () => resolve()
+                onComplete: () => {
+                    this.isWalking = false;
+                    resolve();
+                }
             });
         });
     }
@@ -198,6 +240,7 @@ export class WanderingCat extends GameObjects.Sprite
         const startX = this.x;
         const startY = this.y;
 
+        this.walkFacing = this.GetFacingToward(x, y);
         this.groundY = startY;
         this.isAirborne = true;
 
@@ -233,6 +276,7 @@ export class WanderingCat extends GameObjects.Sprite
 
         this.StopMoving();
         this.nextWanderTarget = this.FindSpotBesideItem(itemX, itemBaseY, itemWidth);
+        this.nextWanderIsRun = true;
         this.wanderTimer = this.scene.time.delayedCall(catSettings.celebrationDelayMs, this.PlayCelebrationHops, [], this);
     }
 
@@ -257,10 +301,44 @@ export class WanderingCat extends GameObjects.Sprite
         });
     }
 
+    // Stops and faces the camera for a moment so a new face can be seen, then carries on where it was going
+    private PauseToShowFace ()
+    {
+        this.facing = 'front';
+        this.faceFrontUntil = this.scene.time.now + catSettings.faceFrontAfterExpressionMs;
+
+        if (this.isWalking)
+        {
+            const interruptedTarget = this.walkTarget;
+
+            this.StopMoving();
+            this.nextWanderTarget ??= interruptedTarget;
+            // Starts walking again once the pause is over (see WanderToNextPoint)
+            this.ScheduleNextWander(0);
+        }
+    }
+
+    private StartWalking (targetX: number, targetY: number)
+    {
+        this.walkFacing = this.GetFacingToward(targetX, targetY);
+        this.isWalking = true;
+    }
+
+    // Away from the camera when heading up the screen, toward it otherwise
+    private GetFacingToward (targetX: number, targetY: number): CatFacing
+    {
+        const deltaX = targetX - this.x;
+        const deltaY = targetY - this.y;
+
+        return deltaY < -Math.abs(deltaX) * catSettings.backFacingSlope ? 'back' : 'front';
+    }
+
     private StopMoving ()
     {
         this.wanderTimer?.remove();
         this.activeTween?.stop();
+        this.isWalking = false;
+        this.walkTarget = undefined;
 
         if (this.isCelebrating)
         {
@@ -317,9 +395,20 @@ export class WanderingCat extends GameObjects.Sprite
             return;
         }
 
+        // Still showing off a new face: waits until that's over, so it never walks away mid-pause
+        const pauseLeftMs = this.faceFrontUntil - this.scene.time.now;
+
+        if (pauseLeftMs > 0)
+        {
+            this.ScheduleNextWander(pauseLeftMs);
+            return;
+        }
+
         const target = this.nextWanderTarget ?? this.PickWanderTarget();
+        const isRun = this.nextWanderTarget !== undefined && this.nextWanderIsRun;
 
         this.nextWanderTarget = undefined;
+        this.nextWanderIsRun = false;
 
         if (!target)
         {
@@ -328,15 +417,22 @@ export class WanderingCat extends GameObjects.Sprite
         }
 
         const distance = PhaserMath.Distance.Between(this.x, this.y, target.x, target.y);
-        const durationMs = (distance / catSettings.walkSpeedPxPerSecond) * 1000;
+        const speed = catSettings.walkSpeedPxPerSecond * (isRun ? catSettings.runSpeedMultiplier : 1);
+        const durationMs = (distance / speed) * 1000;
 
+        this.walkTarget = target;
+        this.StartWalking(target.x, target.y);
         this.activeTween = this.scene.tweens.add({
             targets: this,
             x: target.x,
             y: target.y,
             duration: durationMs,
             ease: 'Linear',
-            onComplete: () => this.ScheduleNextWander()
+            onComplete: () => {
+                this.isWalking = false;
+                this.walkTarget = undefined;
+                this.ScheduleNextWander();
+            }
         });
     }
 
@@ -364,17 +460,64 @@ export class WanderingCat extends GameObjects.Sprite
         return !this.ground.IsWalkable(this.x, this.y) || this.ground.IsPathClear(this.x, this.y, x, y);
     }
 
+    // Walking plays the walk cycle; standing plays the idle breathing (unless it's turned off, like for a
+    // sad cat); hopping and riding boats hold the standing frame
+    private UpdateBodyAnimation ()
+    {
+        // Same clock SetExpression uses for faceFrontUntil
+        const isShowingNewFace = this.scene.time.now < this.faceFrontUntil;
+
+        if (!isShowingNewFace && (this.isWalking || this.isAirborne))
+        {
+            this.facing = this.walkFacing;
+        }
+
+        if (this.isWalking)
+        {
+            this.anims.play(GetCatAnimationKey('walk', this.facing), true);
+        }
+        else if (this.isIdleAnimationEnabled && !this.isAirborne && !this.isCelebrating && !this.ridingBoat)
+        {
+            this.anims.play(GetCatAnimationKey('idle', this.facing), true);
+        }
+        else
+        {
+            const standFrame = catAppearance.bodyFrames[this.facing].stand;
+
+            if (this.anims.isPlaying)
+            {
+                this.anims.stop();
+            }
+
+            if (Number(this.frame.name) !== standFrame)
+            {
+                this.setFrame(standFrame);
+            }
+        }
+    }
+
     // Keeps the head, face and name tag on the body
     private SyncLayers ()
     {
+        const bodyFrame = Number(this.frame.name);
+        const isIdleFrame = bodyFrame === catAppearance.bodyFrames.front.idle || bodyFrame === catAppearance.bodyFrames.back.idle;
+        const headKey = isIdleFrame ? catTextureKeys.idleHead : catTextureKeys.head;
+
+        if (this.headImage.texture.key !== headKey)
+        {
+            this.headImage.setTexture(headKey);
+        }
+
         for (const layer of [ this.headImage, this.faceImage ])
         {
             layer.setPosition(this.x, this.y);
             layer.setScale(this.scaleX, this.scaleY);
             layer.setAlpha(this.alpha);
-            layer.setVisible(this.visible);
         }
 
+        this.headImage.setVisible(this.visible);
+        // Facing away, there's no face to see
+        this.faceImage.setVisible(this.visible && this.facing === 'front');
         this.headImage.setDepth(this.depth + 0.001);
         this.faceImage.setDepth(this.depth + 0.002);
         this.nameTag?.setPosition(this.x, this.y - this.GetStandingHeight() - catSettings.nameTagGapPx);
@@ -382,6 +525,7 @@ export class WanderingCat extends GameObjects.Sprite
 
     protected preUpdate (time: number, delta: number)
     {
+        this.UpdateBodyAnimation();
         super.preUpdate(time, delta);
 
         if (this.ridingBoat)
@@ -405,5 +549,41 @@ export class WanderingCat extends GameObjects.Sprite
         this.faceImage?.destroy();
         this.nameTag?.destroy();
         super.destroy(fromScene);
+    }
+}
+
+// Walk cycles (step, stand, step, stand) and idle breathing (stand, then idle) for each facing.
+// Animations belong to the whole game, so they're only made once.
+function CreateCatAnimations (scene: Scene)
+{
+    for (const facing of [ 'front', 'back' ] as const)
+    {
+        const frames = catAppearance.bodyFrames[facing];
+        const walkKey = GetCatAnimationKey('walk', facing);
+        const idleKey = GetCatAnimationKey('idle', facing);
+        const ToFrames = (frameNumbers: number[]) => frameNumbers.map(frame => ({ key: catTextureKeys.bodySheet, frame }));
+
+        if (!scene.anims.exists(walkKey))
+        {
+            scene.anims.create({
+                key: walkKey,
+                frames: ToFrames([ frames.firstStep, frames.stand, frames.secondStep, frames.stand ]),
+                frameRate: catAppearance.walkFramesPerSecond,
+                repeat: -1
+            });
+        }
+
+        if (!scene.anims.exists(idleKey))
+        {
+            scene.anims.create({
+                key: idleKey,
+                // Each frame shows for its own duration
+                frames: [
+                    { key: catTextureKeys.bodySheet, frame: frames.stand, duration: catAppearance.idleStandMs },
+                    { key: catTextureKeys.bodySheet, frame: frames.idle, duration: catAppearance.idleBreathMs }
+                ],
+                repeat: -1
+            });
+        }
     }
 }

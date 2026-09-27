@@ -43,7 +43,14 @@
     cursor: pointer;
 }
 
-.bottom-panel-tab:hover {
+/* No browser focus ring (the colored line that showed around the tab once it had been clicked); keyboard focus
+   darkens it a little instead */
+.bottom-panel-tab:focus {
+    outline: none;
+}
+
+.bottom-panel-tab:hover,
+.bottom-panel-tab:focus-visible {
     filter: brightness(0.96);
 }
 
@@ -64,29 +71,22 @@
     height: 100%;
 }
 
+/* Every section's content is centered in its column (each has its own max width), at any screen size */
 .bottom-panel-section {
     display: flex;
     flex-direction: column;
+    align-items: center;
     min-width: 0;
     min-height: 0;
-}
-
-.bottom-panel-section.is-center {
-    align-items: center;
-}
-
-.bottom-panel-section.is-right {
-    align-items: flex-end;
 }
 
 /* Shared style for section titles, like "To-do list" */
 .bottom-panel-heading {
     margin: 0 0 10px;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    text-transform: lowercase;
 }
 
 /* Tabs for the swipeable sections on narrow screens (hidden on wider ones) */
@@ -111,7 +111,7 @@
     border-radius: 9px;
     color: var(--ui-text-muted);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;
@@ -155,10 +155,6 @@
         flex: 0 0 100%;
         scroll-snap-align: start;
         scroll-snap-stop: always;
-    }
-
-    .bottom-panel-section.is-right {
-        align-items: stretch;
     }
 }
 

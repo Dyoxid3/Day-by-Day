@@ -1,15 +1,17 @@
 import { EventBus, GameEvents, type EncourageRequestedPayload } from '../game/EventBus';
+import { GetUiZoom } from './UiScale';
 import { onlineSession, RequestToast } from '../online/OnlineSession';
 import type { OnlineNotification } from '../online/OnlineTypes';
 import { CreateAvatar } from './UiAvatar';
 import { FormatTimeAgo } from './UiFormat';
 import { KeepTypingFromGame } from './UiKeyboard';
-import { DescribeNotification } from './NotificationText';
+import { DescribeGiftGoal, DescribeNotification } from './NotificationText';
 import { SailToFriend } from './FriendRow';
+import { toastIconAssets, uiAssets } from './UiAssets';
 import './NotificationsMenu.css';
 
 // One-click replies to an encouragement
-const quickReplies = [ 'Thank you! 💛', 'You too! 💪', "Let's do this! 🔥" ];
+const quickReplies = [ 'Thank you, that means a lot.', 'Thank you. You too.', 'That made my day.' ];
 const replyMaxLength = 120;
 
 // Drops down beside the bell: encouragement from friends (with replies), friend requests and visits
@@ -43,8 +45,8 @@ export class NotificationsMenu
 
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
-        closeButton.className = 'notifications-close';
-        closeButton.textContent = '×';
+        closeButton.className = 'notifications-close pixel-circle is-shape-on-hover';
+        closeButton.textContent = 'x';
         closeButton.setAttribute('aria-label', 'Close notifications');
         closeButton.addEventListener('click', () => this.Close());
 
@@ -130,8 +132,10 @@ export class NotificationsMenu
         const containerBounds = this.container.getBoundingClientRect();
         const anchorBounds = this.anchorElement.getBoundingClientRect();
 
-        this.menuElement.style.left = `${anchorBounds.right - containerBounds.left + 12}px`;
-        this.menuElement.style.top = `${anchorBounds.top - containerBounds.top}px`;
+        const uiZoom = GetUiZoom();
+
+        this.menuElement.style.left = `${(anchorBounds.right - containerBounds.left) / uiZoom + 12}px`;
+        this.menuElement.style.top = `${(anchorBounds.top - containerBounds.top) / uiZoom}px`;
     }
 
     private RenderIfOpen ()
@@ -145,7 +149,10 @@ export class NotificationsMenu
     private Render (isForced = true)
     {
         const snapshot = onlineSession.GetSnapshot();
-        const signature = JSON.stringify([ snapshot.username, snapshot.notifications.map(notification => [ notification.id, notification.hasReplied ]) ]);
+        const signature = JSON.stringify([
+            snapshot.username,
+            snapshot.notifications.map(notification => [ notification.id, notification.hasReplied, notification.gift?.state ])
+        ]);
 
         if (!isForced && signature === this.renderedSignature)
         {
@@ -162,7 +169,7 @@ export class NotificationsMenu
 
         if (snapshot.notifications.length === 0)
         {
-            this.listElement.replaceChildren(CreateMessage('🌱', 'Nothing yet', 'When friends cheer you on or drop by your island, it shows up here.'));
+            this.listElement.replaceChildren(CreateMessage('Nothing yet', 'When friends encourage you or drop by your island, it shows up here.'));
             return;
         }
 
@@ -171,11 +178,11 @@ export class NotificationsMenu
 
     private CreateSignedOutMessage (): HTMLElement
     {
-        const message = CreateMessage('💌', 'Get encouragement from friends', 'Make an account to add friends, cheer each other on and visit each other\'s islands.');
+        const message = CreateMessage('Get encouragement from friends', 'Make an account to add friends, encourage each other and visit each other\'s islands.');
         const signUpButton = document.createElement('button');
 
         signUpButton.type = 'button';
-        signUpButton.className = 'notifications-button is-primary';
+        signUpButton.className = 'notifications-button pixel-pill is-primary';
         signUpButton.textContent = 'Sign up or log in';
         signUpButton.addEventListener('click', () => {
             this.Close();
@@ -194,10 +201,20 @@ export class NotificationsMenu
         item.classList.toggle('is-new', this.newNotificationIds.has(notification.id));
 
         const avatar = CreateAvatar(notification.fromUsername, 'medium');
-        const iconBadge = document.createElement('span');
-        iconBadge.className = 'notification-icon';
-        iconBadge.textContent = description.icon;
-        avatar.append(iconBadge);
+
+        if (description.icon)
+        {
+            const iconBadge = document.createElement('span');
+            iconBadge.className = 'notification-icon pixel-circle';
+
+            const iconImage = document.createElement('img');
+            iconImage.className = 'notification-icon-image';
+            iconImage.src = toastIconAssets[description.icon];
+            iconImage.alt = '';
+            iconImage.draggable = false;
+            iconBadge.append(iconImage);
+            avatar.append(iconBadge);
+        }
 
         const body = document.createElement('div');
         body.className = 'notification-body';
@@ -213,19 +230,40 @@ export class NotificationsMenu
         {
             const messageElement = document.createElement('p');
             messageElement.className = 'notification-message';
-            messageElement.textContent = `“${notification.message}”`;
+            messageElement.textContent = `"${notification.message}"`;
             body.append(messageElement);
+        }
+
+        // What an encouragement's gift needs, or what it gave
+        if (notification.kind === 'encouragement' && notification.gift)
+        {
+            const giftElement = document.createElement('p');
+            giftElement.className = `notification-gift is-${notification.gift.state}`;
+            giftElement.textContent = DescribeGiftGoal(notification.gift, notification.boostPercent);
+            body.append(giftElement);
+        }
+        else if (notification.kind !== 'encouragement')
+        {
+            const detailElement = document.createElement('p');
+            detailElement.className = 'notification-gift';
+            detailElement.textContent = description.toastDetail;
+
+            if (notification.kind !== 'reply')
+            {
+                body.append(detailElement);
+            }
         }
 
         const metaElement = document.createElement('p');
         metaElement.className = 'notification-meta';
 
-        if (notification.boostPercent > 0)
+        // Replies boost coins for a little while
+        if (notification.kind === 'reply' && notification.boostPercent > 0)
         {
             const boostTag = document.createElement('span');
-            boostTag.className = 'notification-boost';
+            boostTag.className = 'notification-boost pixel-pill';
             boostTag.textContent = `+${notification.boostPercent}% coins`;
-            metaElement.append(boostTag, ' · ');
+            metaElement.append(boostTag, ' - ');
         }
 
         metaElement.append(FormatTimeAgo(onlineSession.GetServerNow() - notification.createdAt));
@@ -235,7 +273,7 @@ export class NotificationsMenu
         {
             body.append(notification.hasReplied ? CreateRepliedNote() : this.CreateReplyControls(notification));
         }
-        else if (notification.kind === 'friend-added' || notification.kind === 'visit')
+        else if (notification.kind === 'friend-added' || notification.kind === 'visit' || notification.kind === 'friend-struggling')
         {
             body.append(this.CreateFollowUpButton(notification));
         }
@@ -245,7 +283,8 @@ export class NotificationsMenu
         return item;
     }
 
-    // A quick way to respond: say hi to a new friend, or visit back someone who dropped by
+    // A quick way to respond: say hello to a new friend, encourage a friend having a hard time, or visit back someone
+    // who dropped by
     private CreateFollowUpButton (notification: OnlineNotification): HTMLElement
     {
         const actions = document.createElement('div');
@@ -253,19 +292,20 @@ export class NotificationsMenu
 
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'notification-reply-chip';
+        button.className = 'notification-reply-chip pixel-pill';
 
         if (notification.kind === 'visit')
         {
             const isThereAlready = onlineSession.GetVisitingUsername()?.toLowerCase() === notification.fromUsername.toLowerCase();
 
-            button.textContent = isThereAlready ? "📍 You're on their island" : '⛵ Visit back';
+            button.textContent = isThereAlready ? "You're on their island" : 'Visit back';
             button.disabled = isThereAlready;
             button.addEventListener('click', () => SailToFriend(notification.fromUsername, () => this.Close()));
         }
         else
         {
-            button.textContent = '💌 Say hi';
+            button.textContent = notification.kind === 'friend-struggling' ? 'Encourage' : 'Say hello';
+            button.classList.toggle('is-primary', notification.kind === 'friend-struggling');
             button.addEventListener('click', () => {
                 const payload: EncourageRequestedPayload = { username: notification.fromUsername };
 
@@ -295,7 +335,7 @@ export class NotificationsMenu
         input.type = 'text';
         input.className = 'notification-reply-input';
         input.maxLength = replyMaxLength;
-        input.placeholder = 'Write a reply…';
+        input.placeholder = 'Write a reply...';
         input.setAttribute('aria-label', `Reply to ${notification.fromUsername}`);
 
         const sendButton = document.createElement('button');
@@ -323,7 +363,7 @@ export class NotificationsMenu
             {
                 const result = await onlineSession.ReplyToNotification(notification.id, message.trim());
 
-                RequestToast('💛', `Reply sent to ${notification.fromUsername}`, `They get +${result.boostPercent}% coins for ${result.boostMinutes} min.`, 'reward');
+                RequestToast(`Reply sent to ${notification.fromUsername}`, `They get ${result.boostPercent}% more coins for ${result.boostMinutes} minutes.`, 'reward', false, 'star');
             }
             catch (error)
             {
@@ -334,7 +374,7 @@ export class NotificationsMenu
                     control.disabled = false;
                 }
 
-                RequestToast('⚠️', "Couldn't send your reply", error instanceof Error ? error.message : undefined, 'error');
+                RequestToast("Couldn't send your reply", error instanceof Error ? error.message : undefined, 'error');
             }
         };
 
@@ -342,7 +382,7 @@ export class NotificationsMenu
         {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'notification-reply-chip';
+            chip.className = 'notification-reply-chip pixel-pill';
             chip.textContent = reply;
             chip.addEventListener('click', () => SendReply(reply));
             chips.append(chip);
@@ -363,19 +403,21 @@ function CreateRepliedNote (): HTMLElement
 {
     const note = document.createElement('p');
     note.className = 'notification-replied';
-    note.textContent = '✓ You replied';
+    note.textContent = 'You replied';
 
     return note;
 }
 
-function CreateMessage (icon: string, title: string, text: string): HTMLDivElement
+function CreateMessage (title: string, text: string): HTMLDivElement
 {
     const message = document.createElement('div');
     message.className = 'notifications-empty';
 
-    const iconElement = document.createElement('span');
+    const iconElement = document.createElement('img');
     iconElement.className = 'notifications-empty-icon';
-    iconElement.textContent = icon;
+    iconElement.src = uiAssets.bell;
+    iconElement.alt = '';
+    iconElement.draggable = false;
 
     const titleElement = document.createElement('strong');
     titleElement.textContent = title;

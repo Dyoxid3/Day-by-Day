@@ -45,14 +45,14 @@
 
 .purchase-prompt-title {
     margin: 0;
-    font-size: 17px;
+    font-size: var(--ui-text-large);
 }
 
 .purchase-prompt-price {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
 }
 
@@ -77,7 +77,7 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     cursor: pointer;
 }

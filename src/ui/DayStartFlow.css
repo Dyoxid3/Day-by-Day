@@ -1,0 +1,91 @@
+/* "How are you feeling today?": four pills in a grid */
+.day-start-feelings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+/* Pixel-art pills (the pixel-pill class), each softly tinted */
+.day-start-feeling {
+    --pill-size: 48px;
+
+    height: 48px;
+    padding: 0 16px;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease-out;
+}
+
+@media (hover: hover) {
+    .day-start-feeling:hover {
+        transform: translateY(-2px);
+    }
+}
+
+.day-start-feeling:active {
+    transform: scale(0.96);
+}
+
+.day-start-feeling.is-good {
+    --pixel-tint: var(--tint-gold-soft);
+}
+
+.day-start-feeling.is-okay {
+    --pixel-tint: var(--tint-accent-soft);
+}
+
+.day-start-feeling.is-bad {
+    --pixel-tint: var(--tint-blue-soft);
+}
+
+.day-start-feeling.is-terrible {
+    --pixel-tint: var(--tint-pink-soft);
+}
+
+/* Today's plan, as it's being made */
+.day-start-tasks {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 180px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    text-align: left;
+}
+
+.day-start-task {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    font-size: var(--ui-text-small);
+    overflow-wrap: anywhere;
+}
+
+/* A dot in the task type's color */
+.day-start-task::before {
+    content: '';
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    background: var(--task-color);
+    border-radius: 50%;
+}
+
+/* The planning card's contents: a letter from a better day (on hard days), then the day's tasks */
+.day-start-plan {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}

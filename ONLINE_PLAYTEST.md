@@ -6,44 +6,54 @@ dev server. `npm run dev` starts it, and the game talks to it at `/api`.
 It is built to work, not to be secure or scalable. Accounts, friends, islands and notifications are saved to
 `server/data/online-db.json` (git ignores this file).
 
-## Ready-made friends
+## Ready-made friend
 
-Two demo players already exist: **Mochi** and **Pixel**. Both use the password `demo`, and both have furnished
-islands you can visit.
+One demo player already exists: **Sam** (password `demo`), with a furnished island you can visit.
 
-While nobody is logged in as them, they act on their own:
-- They cheer you on a few seconds after you add them.
-- They reply when you encourage them, which gives you the reply coin boost.
-- They can be sent over to visit you with the demo keys below.
+While nobody is logged in as Sam, he acts on his own:
+- He cheers you on a few seconds after you add him.
+- He replies when you encourage him (which gives you the reply coin boost), and reaches the goal of your encouragement a few seconds later.
+- He can be sent to leave a lantern, encourage you, visit you or have a tough day with the keys below.
+
+Signing up as `daniel` always makes a brand new account, wiping any old one with that name, so a demo can start from
+scratch every time.
 
 ## Two players on one computer
 
 1. Run `npm run dev` and open `http://localhost:8080`.
-2. Open the bottom menu and click **Profile** under Friends on the right. Sign up as yourself. Your friends
+2. Log in or sign up in the card that opens first (or later from **Profile**, under Other in the bottom menu). Your friends
    list is in this Profile menu too.
 3. Open a **second browser window**, then go to the same address. Use Ctrl+N or a different browser, not a
    duplicated tab. Each window keeps its own login.
-4. In the second window, log in as `Mochi` / `demo` or sign up a second account.
+4. In the second window, log in as `Sam` / `demo` or sign up a second account.
 5. Add each other by username, then try the features:
-   - **💌 Cheer:** send encouragement. The other window gets a toast, a red badge on the bell and a coin boost
-     chip (×1.1) next to the coins.
+   - **Encourage:** send encouragement, with an optional gift. The other window gets a toast, a red badge on the bell and a lantern on their island; the gift and a coin boost
+     arrive once they finish the goal you set.
    - **Replying:** open the bell and reply. The player who sent the encouragement gets a boost too.
    - **⛵ Visit:** your cat boards the boat and sails to their island. In their window, your boat arrives and
      your cat wanders their island.
-   - **Coins from visits:** visiting cats drop a few coins for whoever is watching, up to 5 per visit.
+   - **Coins from visits:** a visiting cat drops 5 coins shortly after it arrives, for whoever is watching.
    - **🏠 Sail home** at the top brings you back.
 
 Put the two windows side by side. A browser pauses the game in background tabs, so separate windows look best.
 
 ## One screen (for presenting)
 
-Sign up, then add `Mochi` as a friend. After that, these dev-only keys work (not while typing in a text box):
+Sign up (Sam befriends you the first time you use one of his keys). These dev-only keys work while not typing in a
+text box. `1` shows the Debug button, whose menu has all of them as buttons too.
 
 | Key | What happens |
 | --- | --- |
-| `E` | A demo friend sends you encouragement (+10% coins for 30 min) |
-| `V` | A demo friend sails over and wanders your island for 45 seconds, dropping coins |
-| `P` | Coins burst out of your cat (debug) |
+| `Y` | Get 50 coins |
+| `U` | Earn 5 stars |
+| `H` | Time passes to tomorrow morning |
+| `J` | Time passes to tonight |
+| `K` | Be away for 3 days (counts as missed days, for a comeback) |
+| `N` | Sam leaves a lantern on your island |
+| `M` | Sam encourages you, with a small gift once you finish a third of your day |
+| `V` | Sam sails over and wanders your island for 45 seconds, dropping 5 coins |
+| `T` | Sam lets you know he is having a tough day |
+| `O`, `9`, `0` | Show the cat's mood, neglect the cat, cheer the cat up |
 
 Checking off tasks also earns coins, and the friend boost applies to all coin rewards.
 
@@ -82,8 +92,13 @@ top. Hold Shift and drag to test pinch-zooming. For real touch behaviour, use an
 
 ## Starting fresh
 
-Stop the dev server, delete `server/data/online-db.json`, and start it again. Mochi and Pixel come back with
-their islands.
+To wipe just the demo friend (his messages, gifts and visits), press `1` to show the Debug button and use
+**Clear Sam's memory**. He stays your friend.
+
+To reset everything, stop the dev server, delete `server/data/online-db.json`, and start it again. Sam comes back with
+his island.
+
+Playing as a guest keeps nothing: every visit as a guest starts fresh.
 
 ## Where to tweak things
 

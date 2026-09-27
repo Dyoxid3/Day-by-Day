@@ -1,3 +1,18 @@
+/* The game's pixel font. It only has lowercase letters, numbers and a little punctuation, so the UI shows
+   everything in lowercase; anything else it lacks (emoji, +, arrows) comes from the next font in line.
+   It's drawn on an 8px grid, so it's crisp at 8, 16, 24, 32px. */
+@font-face {
+    font-family: 'Island Pixel';
+    src: url('assets/fonts/Pixel%20Font(4).ttf') format('truetype');
+    font-display: block;
+    /* The font's own line spacing leaves 2 blank pixels above its letters and none below, so text sat low in
+       buttons and pills. Every glyph is 6 of its 8 pixels tall (2 below the baseline, 4 above), so these put
+       exactly 1 blank pixel above and below instead. */
+    ascent-override: 62.5%;
+    descent-override: 37.5%;
+    line-gap-override: 0%;
+}
+
 html,
 body {
     overflow: hidden;

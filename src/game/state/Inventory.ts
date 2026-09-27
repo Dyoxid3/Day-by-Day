@@ -1,4 +1,5 @@
 import { EventBus, GameEvents, type InventoryChangedPayload } from '../EventBus';
+import { GetShopItem } from '../data/ShopCatalog';
 
 // Items the player owns but hasn't placed, as counts per shop item id
 class Inventory
@@ -42,6 +43,18 @@ class Inventory
         this.EmitChange(itemId);
 
         return true;
+    }
+
+    ToSaveData (): { itemCounts: Record<string, number> }
+    {
+        return { itemCounts: Object.fromEntries(this.itemCounts) };
+    }
+
+    // Items that have left the shop catalog (like the old placeholder table) are dropped
+    LoadSaveData (data: { itemCounts?: Record<string, number> } | undefined)
+    {
+        this.itemCounts = new Map(Object.entries(data?.itemCounts ?? {})
+            .filter(([ itemId, count ]) => count > 0 && GetShopItem(itemId) !== undefined));
     }
 
     private EmitChange (itemId: string)

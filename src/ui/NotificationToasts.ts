@@ -1,5 +1,6 @@
 import { EventBus, GameEvents, type NotificationReceivedPayload, type ToastRequestedPayload } from '../game/EventBus';
 import { DescribeNotification } from './NotificationText';
+import { toastIconAssets } from './UiAssets';
 import './NotificationToasts.css';
 
 const toastSettings = {
@@ -25,10 +26,10 @@ export class NotificationToasts
             const description = DescribeNotification(notification);
 
             this.Show({
-                icon: description.icon,
+                icon: description.icon ?? undefined,
                 title: `${notification.fromUsername} ${description.action}`,
                 message: description.toastDetail,
-                tone: notification.boostPercent > 0 ? 'reward' : 'info',
+                tone: description.isReward ? 'reward' : 'info',
                 opensNotifications: true
             });
         });
@@ -39,10 +40,6 @@ export class NotificationToasts
         const toastElement = document.createElement('div');
         toastElement.className = `toast is-${toast.tone ?? 'info'}`;
         toastElement.setAttribute('role', toast.tone === 'error' ? 'alert' : 'status');
-
-        const iconElement = document.createElement('span');
-        iconElement.className = 'toast-icon';
-        iconElement.textContent = toast.icon;
 
         const textElement = document.createElement('div');
         textElement.className = 'toast-text';
@@ -62,15 +59,30 @@ export class NotificationToasts
 
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
-        closeButton.className = 'toast-close';
-        closeButton.textContent = '×';
+        closeButton.className = 'toast-close pixel-circle is-shape-on-hover';
+        closeButton.textContent = 'x';
         closeButton.setAttribute('aria-label', 'Dismiss');
         closeButton.addEventListener('click', event => {
             event.stopPropagation();
             this.Dismiss(toastElement);
         });
 
-        toastElement.append(iconElement, textElement, closeButton);
+        // A pixel-art picture in a circle, when the toast has one
+        if (toast.icon)
+        {
+            const iconElement = document.createElement('span');
+            iconElement.className = 'toast-icon pixel-circle';
+
+            const iconImage = document.createElement('img');
+            iconImage.className = 'toast-icon-image';
+            iconImage.src = toastIconAssets[toast.icon];
+            iconImage.alt = '';
+            iconImage.draggable = false;
+            iconElement.append(iconImage);
+            toastElement.append(iconElement);
+        }
+
+        toastElement.append(textElement, closeButton);
 
         if (toast.opensNotifications)
         {

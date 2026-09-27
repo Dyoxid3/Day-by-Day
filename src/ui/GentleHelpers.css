@@ -1,0 +1,88 @@
+/* Suggested smaller steps: a numbered checklist, so the player keeps only the steps they want */
+.gentle-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: min(46vh, 320px);
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    counter-reset: gentle-step;
+    text-align: left;
+}
+
+.gentle-step {
+    background: var(--ui-surface);
+    border: 1px solid var(--ui-border);
+    border-radius: 10px;
+    font-size: var(--ui-text-small);
+    overflow-wrap: anywhere;
+    counter-increment: gentle-step;
+    transition: opacity 0.15s ease;
+}
+
+.gentle-step-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.gentle-step-label::before {
+    content: counter(gentle-step);
+    order: 1;
+    flex-shrink: 0;
+    color: var(--ui-accent);
+    font-weight: 800;
+}
+
+.gentle-step-checkbox {
+    order: 0;
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--ui-accent);
+    cursor: pointer;
+}
+
+.gentle-step-text {
+    order: 2;
+    flex: 1;
+}
+
+/* A step the player unticked stays in the list, faded, in case they change their mind */
+.gentle-step.is-left-out {
+    opacity: 0.5;
+}
+
+.gentle-step.is-left-out .gentle-step-text {
+    text-decoration: line-through;
+}
+
+/* A kinder name: the original above, the suggestion below */
+.gentle-rename {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.gentle-rename p {
+    margin: 0;
+    font-size: var(--ui-text-small);
+    overflow-wrap: anywhere;
+}
+
+.gentle-rename-from {
+    color: var(--ui-text-muted);
+}
+
+.gentle-rename-join {
+    color: var(--ui-text-muted);
+}
+
+.gentle-rename-to {
+    font-weight: 700;
+}

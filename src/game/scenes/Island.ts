@@ -1,4 +1,4 @@
-import { Scene, Geom, Scenes, Cameras, Textures } from 'phaser';
+import { Scene, Geom, Scenes, Cameras } from 'phaser';
 import { WanderingCat } from '../entities/WanderingCat';
 import { Boat, boatSettings, boatTextureKey } from '../entities/Boat';
 import { IslandCameraController } from '../systems/IslandCameraController';
@@ -7,7 +7,13 @@ import { PlacedItemsLayer } from '../systems/PlacedItemsLayer';
 import { IslandGround } from '../systems/IslandGround';
 import { IslandTravel } from '../systems/IslandTravel';
 import { VisitorManager } from '../systems/VisitorManager';
-import { VisitCoinDrops, coinTextureKey } from '../systems/VisitCoinDrops';
+import { VisitCoinDrops, coinTextureFile, coinTextureKey } from '../systems/VisitCoinDrops';
+import { PixelSnapping } from '../systems/PixelSnapping';
+import { DayNightLighting } from '../systems/DayNightLighting';
+import { islandLightsSceneKey, SetIslandLightsTarget } from './IslandLights';
+import { PlayBackgroundMusic, PreloadBackgroundMusic } from '../systems/BackgroundMusic';
+import { PropPickUpController } from '../systems/PropPickUpController';
+import { LanternLayer, lanternArt } from '../systems/LanternLayer';
 import {
     EventBus,
     GameEvents,
@@ -34,6 +40,8 @@ const seaColor = {
     blue: islandArt.seaColor & 0xff
 };
 const travelFadeMs = 450;
+// Below anything that sorts by its y position, wherever it is on the island
+const islandBackgroundDepth = -1000000;
 // Other players' cats show these faces now and then (their real mood isn't shared online yet)
 const otherCatExpressions: CatExpression[] = [ 'default', 'cool', 'satisfied', 'dazed' ];
 
@@ -56,8 +64,6 @@ export class Island extends Scene
     // The grass and sand, where cats walk and items go
     private ground: IslandGround;
     private positions: IslandPositions;
-    // Pixel art is drawn sharp when zoomed in and smoothed when zoomed out (sharp pixels shimmer when shrunk)
-    private isPixelArtSharp?: boolean;
     private itemsLayer: PlacedItemsLayer;
     private travel: IslandTravel;
     private playerBoat: Boat;
@@ -81,20 +87,23 @@ export class Island extends Scene
         this.load.setPath('assets');
 
         this.load.image(islandArt.textureKey, islandArt.file);
-        this.load.image(catTextureKeys.body, catAppearance.folder + catAppearance.bodyFile);
+        this.load.spritesheet(catTextureKeys.bodySheet, catAppearance.folder + catAppearance.bodySheetFile, {
+            frameWidth: catAppearance.frameSize,
+            frameHeight: catAppearance.frameSize
+        });
         this.load.image(catTextureKeys.head, catAppearance.folder + catAppearance.headFile);
+        this.load.image(catTextureKeys.idleHead, catAppearance.folder + catAppearance.idleHeadFile);
 
         for (const expression of catExpressions)
         {
             this.load.image(GetCatFaceTextureKey(expression), catAppearance.folder + catAppearance.faceFiles[expression]);
         }
 
-        this.load.image(coinTextureKey, 'coin.png');
+        this.load.image(coinTextureKey, coinTextureFile);
 
-        if (boatSettings.imageFile)
-        {
-            this.load.image(boatTextureKey, boatSettings.imageFile);
-        }
+        this.load.image(boatTextureKey, boatSettings.imageFile);
+        this.load.image(lanternArt.textureKey, lanternArt.file);
+        PreloadBackgroundMusic(this);
 
         for (const item of shopCatalog)
         {
@@ -112,11 +121,31 @@ export class Island extends Scene
 
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(islandArt.seaColor);
-        this.isPixelArtSharp = undefined;
+        // Draws everything lined up with the art's pixels, with the camera still moving smoothly
+        new PixelSnapping(this);
+        // Dims the island at night and brightens it in the morning
+        const lighting = new DayNightLighting(this);
 
-        // The island art is drawn at 1x, behind everything
-        this.island = this.add.image(this.scale.width / 2, this.scale.height / 2, islandArt.textureKey);
-        this.island.setDepth(-1);
+        // Lamps glow at night, drawn by a scene on top of this one so the night's darkening doesn't dim them
+        SetIslandLightsTarget({
+            camera: this.camera,
+            GetItems: () => this.itemsLayer.GetItems(),
+            GetNightAmount: () => lighting.GetNightAmount()
+        });
+        this.events.once(Scenes.Events.SHUTDOWN, () => SetIslandLightsTarget(null));
+
+        if (!this.scene.isActive(islandLightsSceneKey))
+        {
+            this.scene.launch(islandLightsSceneKey);
+        }
+        // Quiet music in the background, carrying on through boat trips
+        PlayBackgroundMusic(this);
+
+        // The island art is drawn at 1x, behind everything. Cats and items sort by their y position, which is
+        // negative on the upper part of the island (it's centered on the screen), so the island goes far lower.
+        // Placed on whole pixels, so the walkable-ground map lines up with the art exactly.
+        this.island = this.add.image(Math.round(this.scale.width / 2), Math.round(this.scale.height / 2), islandArt.textureKey);
+        this.island.setDepth(islandBackgroundDepth);
 
         const islandBounds = this.island.getBounds();
 
@@ -136,6 +165,7 @@ export class Island extends Scene
 
         // The player's own cat shows their cat's mood (see state/CatMood)
         this.playerCat.SetExpression(playerCatMood.GetExpression());
+        this.playerCat.SetIdleAnimationEnabled(playerCatMood.GetMood().playsIdleAnimation);
 
         // Frames the island itself rather than the whole image, so the default view is closer in
         const viewArea = this.positions.viewArea;
@@ -144,19 +174,22 @@ export class Island extends Scene
         this.cameraController = new IslandCameraController(this, this.playerCat, framedArea);
         this.ApplyScreenInsets();
         this.cameraController.SnapToDefaultView();
-        this.UpdatePixelArtSharpness();
 
         if (!this.visitedIsland)
         {
             // Created after the camera controller so its click handler runs second: the click that places an
             // item re-enables camera dragging only after the camera has already ignored that click
             this.placementController = new ItemPlacementController(this, this.ground, this.itemsLayer);
+            // Press and hold a prop to put it back in the inventory
+            new PropPickUpController(this, this.itemsLayer, () => !this.isTraveling && !this.placementController?.IsPlacing());
+            // Lanterns left by friends' encouragement; tap one to read it
+            new LanternLayer(this, this.ground, () => !this.isTraveling && !this.placementController?.IsPlacing());
             new VisitorManager(this, this.positions, this.travel, (x, y) => this.CreateOtherPlayersCat(x, y));
         }
 
         if (import.meta.env.DEV)
         {
-            RegisterDebugControls(this, this.playerCat);
+            RegisterDebugControls(this);
         }
 
         this.ListenToEvents();
@@ -262,40 +295,10 @@ export class Island extends Scene
         });
     }
 
-    update ()
-    {
-        this.UpdatePixelArtSharpness();
-    }
-
-    // Sharp (nearest-pixel) at 1x zoom and closer, smoothed when zoomed out so thin lines don't flicker
-    private UpdatePixelArtSharpness ()
-    {
-        const shouldBeSharp = this.camera.zoom >= 1;
-
-        if (shouldBeSharp === this.isPixelArtSharp)
-        {
-            return;
-        }
-
-        const filterMode = shouldBeSharp ? Textures.FilterMode.NEAREST : Textures.FilterMode.LINEAR;
-        const pixelArtKeys = [
-            islandArt.textureKey,
-            catTextureKeys.body,
-            catTextureKeys.head,
-            ...catExpressions.map(GetCatFaceTextureKey)
-        ];
-
-        this.isPixelArtSharp = shouldBeSharp;
-
-        for (const key of pixelArtKeys)
-        {
-            this.textures.get(key).setFilter(filterMode);
-        }
-    }
-
     private HandleCatMoodChanged (payload: CatMoodChangedPayload)
     {
         this.playerCat.SetExpression(payload.expression);
+        this.playerCat.SetIdleAnimationEnabled(playerCatMood.GetMood().playsIdleAnimation);
     }
 
     // --- Boat trips ---

@@ -1,0 +1,23 @@
+.lantern-message {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+    background: #fff8e6;
+    border: 2px solid #f3dca4;
+    border-radius: 12px;
+}
+
+.lantern-message-text {
+    margin: 0;
+    font-size: var(--ui-text-small);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.lantern-message-gift {
+    margin: 0;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    line-height: 1.4;
+}

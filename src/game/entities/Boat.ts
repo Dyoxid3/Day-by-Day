@@ -1,14 +1,12 @@
 import { Scene, GameObjects, Math as PhaserMath } from 'phaser';
 
 export const boatSettings = {
-    // Boat image in public/assets (e.g. 'boat.png'). While empty, a ⛵ emoji stands in for it.
-    imageFile: '',
-    imageScale: 0.25,
+    // Boat image in public/assets. It's pixel art, drawn at its real size (1 art pixel = 1 world pixel, like the cat and
+    // the island) so it stays crisp: the image is scaled to this many pixels wide, whatever size the file is saved at.
+    imageFile: 'PixelArt/Cat/boat.png',
+    artSizePx: 128,
     // Which way the art's front points; the boat flips to face where it's sailing
     imageFacesRight: true,
-    placeholderEmoji: '⛵',
-    placeholderFontSizePx: 64,
-    placeholderFacesRight: false,
     bobHeightPx: 3,
     bobDurationMs: 1400,
     // Where passengers stand (drawn in front of the boat), as a fraction of the boat's height above its waterline
@@ -28,30 +26,16 @@ type Passenger = { x: number, y: number };
 // A boat on the water, positioned by its waterline (bottom-center). Carries cats between islands.
 export class Boat extends GameObjects.Container
 {
-    private visual: GameObjects.Image | GameObjects.Text;
-    private facesRight: boolean;
+    private visual: GameObjects.Image;
+    private facesRight = boatSettings.imageFacesRight;
     private bobTween?: Phaser.Tweens.Tween;
 
     constructor (scene: Scene, x: number, y: number)
     {
         super(scene, x, y);
 
-        if (boatSettings.imageFile && scene.textures.exists(boatTextureKey))
-        {
-            this.visual = new GameObjects.Image(scene, 0, 0, boatTextureKey).setScale(boatSettings.imageScale);
-            this.facesRight = boatSettings.imageFacesRight;
-        }
-        else
-        {
-            this.visual = new GameObjects.Text(scene, 0, 0, boatSettings.placeholderEmoji, {
-                fontSize: `${boatSettings.placeholderFontSizePx}px`,
-                // Emoji can poke past the normal text box
-                padding: { top: 10, bottom: 6 },
-                resolution: 2
-            });
-            this.facesRight = boatSettings.placeholderFacesRight;
-        }
-
+        this.visual = new GameObjects.Image(scene, 0, 0, boatTextureKey);
+        this.visual.setScale(boatSettings.artSizePx / this.visual.width);
         this.visual.setOrigin(0.5, 1);
         this.add(this.visual);
         this.setDepth(y);

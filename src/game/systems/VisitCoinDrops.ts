@@ -4,9 +4,12 @@ import { WanderingCat } from '../entities/WanderingCat';
 import { RequestCoinReward } from './CoinRewards';
 
 export const coinTextureKey = 'coin';
+// Inside public/assets: the 32x32 pixel-art coin (the same one the HTML UI shows)
+export const coinTextureFile = 'PixelArt/Cat/pixielcoin.png';
 
 const coinDropSettings = {
-    coinScale: 0.16,
+    // Half of the 32px coin, so it's 16px next to the 48px cat
+    coinScale: 0.5,
     // How far beside the cat the coin lands
     minThrowDistancePx: 14,
     maxThrowDistancePx: 28,
@@ -19,8 +22,8 @@ const coinDropSettings = {
     sparkleColor: 0xfff3b0
 };
 
-// A visiting cat now and then tosses a coin onto the ground, which then flies to the coin counter.
-// Stops after coinRewardSettings.visitMaxDropsPerVisit coins.
+// Shortly after arriving, a visiting cat tosses a few coins onto the ground, one after another, which then fly to the
+// coin counter. Stops after coinRewardSettings.visitMaxDropsPerVisit coins.
 export class VisitCoinDrops
 {
     private scene: Scene;
@@ -32,7 +35,7 @@ export class VisitCoinDrops
     {
         this.scene = scene;
         this.cat = cat;
-        this.ScheduleNextDrop();
+        this.ScheduleNextDrop(coinRewardSettings.visitFirstDropDelayMs);
     }
 
     Stop ()
@@ -41,14 +44,12 @@ export class VisitCoinDrops
         this.timer?.remove();
     }
 
-    private ScheduleNextDrop ()
+    private ScheduleNextDrop (delayMs = PhaserMath.Between(coinRewardSettings.visitDropIntervalMinMs, coinRewardSettings.visitDropIntervalMaxMs))
     {
         if (this.dropsLeft <= 0)
         {
             return;
         }
-
-        const delayMs = PhaserMath.Between(coinRewardSettings.visitDropIntervalMinMs, coinRewardSettings.visitDropIntervalMaxMs);
 
         this.timer = this.scene.time.delayedCall(delayMs, () => this.DropCoin());
     }

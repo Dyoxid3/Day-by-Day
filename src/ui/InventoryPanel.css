@@ -49,31 +49,26 @@
 
 .inventory-title {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--ui-text-large);
 }
 
 .inventory-close {
     width: 32px;
     height: 32px;
     padding: 0;
-    background: transparent;
+    background: none;
     border: none;
-    border-radius: 50%;
     color: var(--ui-text);
     font-size: 24px;
     line-height: 1;
     cursor: pointer;
 }
 
-.inventory-close:hover {
-    background: rgba(0, 0, 0, 0.06);
-}
-
 .inventory-hint {
     margin: 0;
     padding: 0 20px 10px;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
 }
 
 .inventory-grid {
@@ -101,7 +96,7 @@
     border: 1px dashed var(--ui-border);
     border-radius: 12px;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     line-height: 1.45;
 }
 
@@ -151,20 +146,22 @@
 
 /* How many of this item are stacked here */
 .inventory-item-count {
+    --pill-size: 24px;
+    --pixel-tint: var(--tint-dark);
+
     position: absolute;
     top: 8px;
     right: 8px;
     padding: 2px 8px;
-    background: var(--ui-text);
     border-radius: 999px;
     color: #ffffff;
-    font-size: 12px;
+    font-size: var(--ui-text-small);
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
 
 .inventory-item-name {
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
 }
 
@@ -191,7 +188,7 @@
     border-radius: 9px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
     transition: filter 0.12s, transform 0.12s;

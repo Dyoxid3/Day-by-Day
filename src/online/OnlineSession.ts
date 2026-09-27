@@ -2,6 +2,10 @@ import {
     EventBus,
     GameEvents,
     type AccountChangedPayload,
+    type LoggedInPayload,
+    type FeelingSharedPayload,
+    type GiftReceivedPayload,
+    type ToastIcon,
     type IslandLayoutChangedPayload,
     type NotificationReceivedPayload,
     type ToastRequestedPayload,
@@ -9,13 +13,27 @@ import {
     type TravelRequestedPayload,
     type VisitStateChangedPayload
 } from '../game/EventBus';
+import { feelingsThatNotifyFriends } from '../game/data/DaySettings';
 import { GetCompletionPercent } from '../game/data/TaskTypes';
 import { playerCoinBoost } from '../game/state/CoinBoost';
-import { playerStreak } from '../game/state/DailyStreak';
+import { comebacks } from '../game/state/Comebacks';
+import { dayCycle } from '../game/state/DayCycle';
+import { gameClock } from '../game/state/GameClock';
 import { playerIslandLayout } from '../game/state/IslandLayout';
+import { playerStars } from '../game/state/Stars';
 import { playerTaskList } from '../game/state/TaskList';
 import { GetStoredToken, onlineApi, OnlineApiError, StoreToken, type DemoFriendAction } from './OnlineApi';
-import type { BoostGrantResponse, FriendSummary, OnlineNotification, OnlineSnapshot, PlayerStatus, PollResponse } from './OnlineTypes';
+import type {
+    BoostGrantResponse,
+    EncourageResponse,
+    FriendSummary,
+    GiftOffer,
+    OnlineNotification,
+    OnlineSnapshot,
+    PlayerStatus,
+    PollResponse,
+    ServerReward
+} from './OnlineTypes';
 
 const onlineSettings = {
     // How often the game checks the server for notifications, friends and visitors
@@ -43,6 +61,10 @@ class OnlineSession
     private locallyRepliedIds = new Set<number>();
     private hasReceivedFirstPoll = false;
     private lastSnapshotSignature = '';
+    // Gifts already added to the wallet, so one a poll still lists (before the claim reaches the server) isn't added twice
+    private claimedRewardIds = new Set<number>();
+    // Whether friends were last told the player is on track, so the status is only resent when that changes
+    private lastSentOnTrack = true;
     private serverClockOffsetMs = 0;
     private pollTimerId?: number;
     private visitHeartbeatTimerId?: number;
@@ -58,7 +80,18 @@ class OnlineSession
     {
         EventBus.on(GameEvents.IslandLayoutChanged, this.HandleIslandLayoutChanged, this);
         EventBus.on(GameEvents.TasksChanged, this.ScheduleStatusSave, this);
-        EventBus.on(GameEvents.StreakChanged, this.ScheduleStatusSave, this);
+        EventBus.on(GameEvents.StarsChanged, this.ScheduleStatusSave, this);
+        EventBus.on(GameEvents.ComebackCounted, this.ScheduleStatusSave, this);
+        EventBus.on(GameEvents.DayStarted, this.ScheduleStatusSave, this);
+        EventBus.on(GameEvents.PlayerDataLoaded, this.ScheduleStatusSave, this);
+        // Falling behind happens as time passes, not only when tasks change
+        EventBus.on(GameEvents.MinutePassed, () => {
+            if (dayCycle.IsOnTrack() !== this.lastSentOnTrack)
+            {
+                this.ScheduleStatusSave();
+            }
+        });
+        EventBus.on(GameEvents.FeelingShared, this.HandleFeelingShared, this);
         EventBus.on(GameEvents.VisitStateChanged, this.HandleVisitStateChanged, this);
         EventBus.on(GameEvents.TravelStarted, this.HandleTravelStarted, this);
         EventBus.on(GameEvents.TravelFinished, () => {
@@ -169,9 +202,10 @@ class OnlineSession
         return friend;
     }
 
-    EncourageFriend (username: string, message: string): Promise<BoostGrantResponse>
+    // The gift's coins and stars should already be taken from the player's own wallet
+    EncourageFriend (username: string, message: string, gift: GiftOffer): Promise<EncourageResponse>
     {
-        return onlineApi.Encourage(username, message);
+        return onlineApi.Encourage(username, message, gift, dayCycle.GetDayKey());
     }
 
     async ReplyToNotification (notificationId: number, message: string): Promise<BoostGrantResponse>
@@ -237,7 +271,7 @@ class OnlineSession
     {
         if (!this.username)
         {
-            RequestToast('🔒', 'Log in first', 'Demo friends need an account with Mochi or Pixel added as a friend.', 'error');
+            RequestToast('Log in first', 'Sam can only visit or write to an account.', 'error');
             return;
         }
 
@@ -249,7 +283,28 @@ class OnlineSession
         }
         catch (error)
         {
-            RequestToast('⚠️', "The demo friend couldn't do that", error instanceof Error ? error.message : undefined, 'error');
+            RequestToast("The demo friend couldn't do that", error instanceof Error ? error.message : undefined, 'error');
+        }
+    }
+
+    // For demos: wipes everything the demo friend remembers (messages, gifts, visits), so a demo can start fresh.
+    // They stay friends with whoever added them.
+    async ClearDemoFriendsMemory ()
+    {
+        try
+        {
+            const result = await onlineApi.ResetDemoFriends();
+
+            RequestToast(`${result.friendNames.join(' and ')} start fresh`, 'Their messages, gifts and visits were cleared.', 'info');
+
+            if (this.username)
+            {
+                await this.PollNow();
+            }
+        }
+        catch (error)
+        {
+            RequestToast("Couldn't clear the demo friends' memory", error instanceof Error ? error.message : undefined, 'error');
         }
     }
 
@@ -262,21 +317,17 @@ class OnlineSession
         this.sessionNumber++;
         this.username = username;
 
-        if (isNewAccount)
-        {
-            // A new account keeps everything the player built as a guest
-            await Promise.allSettled([
-                onlineApi.SaveIsland(playerIslandLayout.GetPlacedItems()),
-                onlineApi.SaveStatus(GetCurrentStatus())
-            ]);
-        }
-        else
-        {
-            await this.LoadOwnIsland();
-            onlineApi.SaveStatus(GetCurrentStatus()).catch(() => undefined);
-        }
+        // A new account starts fresh (its island is empty), rather than keeping what was done as a guest
+        await this.LoadOwnIsland();
+        this.EmitAccountChanged(isNewAccount);
+        // Sent once the account's own progress has loaded (see PlayerSave)
+        this.SendStatus().catch(() => undefined);
 
-        this.EmitAccountChanged();
+        // After the account's progress has loaded, and only for a real sign up or log in, not a login kept from
+        // before a reload
+        const loggedInPayload: LoggedInPayload = { isNewAccount };
+
+        EventBus.emit(GameEvents.LoggedIn, loggedInPayload);
         await this.PollNow();
         this.SchedulePoll();
     }
@@ -333,6 +384,8 @@ class OnlineSession
         this.visitingUsername = null;
         this.ResetSessionState();
         playerCoinBoost.Clear();
+        // A guest starts with an empty island (guests keep nothing, see PlayerSave)
+        playerIslandLayout.ReplacePlacedItems([]);
         this.EmitAccountChanged();
         this.EmitSnapshotIfChanged();
     }
@@ -348,6 +401,7 @@ class OnlineSession
         this.locallyReadIds.clear();
         this.locallyRepliedIds.clear();
         this.hasReceivedFirstPoll = false;
+        this.claimedRewardIds.clear();
     }
 
     private async LoadOwnIsland ()
@@ -397,7 +451,7 @@ class OnlineSession
             if (error instanceof OnlineApiError && error.status === 401)
             {
                 this.EndSession();
-                RequestToast('🔒', 'You were signed out', 'Please log in again.', 'error');
+                RequestToast('You were signed out', 'Please log in again.', 'error');
                 return;
             }
 
@@ -445,12 +499,15 @@ class OnlineSession
         playerCoinBoost.SetBoosts(
             poll.boosts.map(boost => ({
                 percent: boost.percent,
-                endsAt: now + boost.endsInMs,
+                // Boosts from an encouragement last until the end of the player's day
+                endsAt: now + (boost.endsInMs ?? gameClock.GetMsUntilEndOfDay()),
                 fromUsername: boost.fromUsername,
                 kind: boost.kind
             })),
             poll.boostPercent
         );
+
+        this.CollectRewards(poll.rewards ?? []);
 
         if (this.hasReceivedFirstPoll)
         {
@@ -471,7 +528,7 @@ class OnlineSession
 
             if (unreadCount > 0)
             {
-                RequestToast('🔔', `${unreadCount} new notification${unreadCount === 1 ? '' : 's'}`, 'Click to see them.', 'info', true);
+                RequestToast(`${unreadCount} new notification${unreadCount === 1 ? '' : 's'}`, 'Click to see them.', 'info', true, 'bell');
             }
         }
 
@@ -494,25 +551,71 @@ class OnlineSession
         EventBus.emit(GameEvents.OnlineStateChanged, snapshot);
     }
 
-    private EmitAccountChanged ()
+    private EmitAccountChanged (isNewAccount = false)
     {
-        const payload: AccountChangedPayload = { username: this.username };
+        const payload: AccountChangedPayload = { username: this.username, isNewAccount };
 
         EventBus.emit(GameEvents.AccountChanged, payload);
+    }
+
+    // Gifts from friends (and gifts of the player's own that came back) go into the wallet, then the server is told
+    // they've been collected
+    private CollectRewards (rewards: ServerReward[])
+    {
+        const newRewards = rewards.filter(reward => !this.claimedRewardIds.has(reward.id));
+
+        if (newRewards.length === 0)
+        {
+            return;
+        }
+
+        for (const reward of newRewards)
+        {
+            this.claimedRewardIds.add(reward.id);
+
+            const payload: GiftReceivedPayload = {
+                coins: reward.coins,
+                stars: reward.stars,
+                fromUsername: reward.fromUsername,
+                kind: reward.kind
+            };
+
+            EventBus.emit(GameEvents.GiftReceived, payload);
+        }
+
+        onlineApi.ClaimRewards(newRewards.map(reward => reward.id)).catch(() => undefined);
+    }
+
+    // A hard day lets friends know the player could use some encouragement (never which feeling it was)
+    private HandleFeelingShared (payload: FeelingSharedPayload)
+    {
+        if (this.username && feelingsThatNotifyFriends.includes(payload.feeling))
+        {
+            onlineApi.AskFriendsForEncouragement(payload.dayKey).catch(() => undefined);
+        }
     }
 
     // --- Syncing the player's own island and status ---
 
     private HandleIslandLayoutChanged (payload: IslandLayoutChangedPayload)
     {
-        if (payload.reason !== 'added' || !this.username)
+        if (payload.reason === 'replaced' || !this.username)
         {
             return;
         }
 
         onlineApi.SaveIsland(playerIslandLayout.GetPlacedItems()).catch(() => {
-            RequestToast('⚠️', "Couldn't save your island", 'It will try again next time you place something.', 'error');
+            RequestToast("Couldn't save your island", 'It will try again next time you place something.', 'error');
         });
+    }
+
+    private SendStatus (): Promise<unknown>
+    {
+        const status = GetCurrentStatus();
+
+        this.lastSentOnTrack = status.isOnTrack;
+
+        return onlineApi.SaveStatus(status);
     }
 
     private ScheduleStatusSave ()
@@ -526,7 +629,7 @@ class OnlineSession
         this.statusSaveTimerId = window.setTimeout(() => {
             if (this.username)
             {
-                onlineApi.SaveStatus(GetCurrentStatus()).catch(() => undefined);
+                this.SendStatus().catch(() => undefined);
             }
         }, onlineSettings.statusSaveDelayMs);
     }
@@ -576,14 +679,17 @@ class OnlineSession
 function GetCurrentStatus (): PlayerStatus
 {
     return {
-        streakDays: playerStreak.GetStreakDays(),
-        progressPercent: GetCompletionPercent(playerTaskList.GetProgress())
+        stars: playerStars.GetStars(),
+        comebacks: comebacks.GetCount(),
+        progressPercent: GetCompletionPercent(playerTaskList.GetProgress()),
+        dayKey: dayCycle.GetDayKey(),
+        isOnTrack: dayCycle.IsOnTrack()
     };
 }
 
-export function RequestToast (icon: string, title: string, message?: string, tone: ToastTone = 'info', opensNotifications = false)
+export function RequestToast (title: string, message?: string, tone: ToastTone = 'info', opensNotifications = false, icon?: ToastIcon)
 {
-    const payload: ToastRequestedPayload = { icon, title, message, tone, opensNotifications };
+    const payload: ToastRequestedPayload = { title, icon, message, tone, opensNotifications };
 
     EventBus.emit(GameEvents.ToastRequested, payload);
 }

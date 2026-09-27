@@ -1,7 +1,8 @@
 .task-prompt-overlay {
     position: absolute;
     inset: 0;
-    z-index: 5;
+    /* Above the day's check-in card (GentleCard.css), which adds tasks with this menu while planning the day */
+    z-index: 6;
     display: grid;
     place-items: center;
     background: rgba(0, 0, 0, 0.35);
@@ -52,7 +53,7 @@
 
 .task-prompt-title {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--ui-text-large);
 }
 
 .task-prompt-field {
@@ -68,10 +69,9 @@
     margin-bottom: 6px;
     padding: 0;
     color: var(--ui-text-muted);
-    font-size: 12px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    text-transform: lowercase;
 }
 
 .task-prompt-input {
@@ -83,7 +83,7 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
 }
 
 .task-prompt-input:focus {
@@ -120,51 +120,50 @@
     pointer-events: none;
 }
 
+/* Drawn with the pixel-art pill (the pixel-pill class) */
 .task-prompt-choice span {
+    --pill-size: 36px;
+
     display: inline-flex;
     flex: 1;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 6px 12px;
-    background: var(--ui-surface);
-    border: 2px solid var(--ui-border);
+    padding: 8px 14px;
     border-radius: 999px;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
-    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+    transition: color 0.12s;
 }
 
 .task-prompt-choice:hover span {
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent-soft);
 }
 
 .task-prompt-choice input:checked + span {
-    background: var(--ui-accent);
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent);
+
     color: #ffffff;
 }
 
-/* Type pills use their type's color, with a dot to show it before they're picked */
-.task-prompt-choice.is-type span::before {
+/* Type pills use their type's color, with a pixel-art dot to show it before they're picked.
+   (The dot is ::after, since ::before draws the pill; "order" puts it before the text.) */
+.task-prompt-choice.is-type span::after {
     content: '';
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--task-color);
-}
-
-.task-prompt-choice.is-type:hover span {
-    border-color: var(--task-color);
+    order: -1;
+    width: 10px;
+    height: 10px;
+    background: var(--pixel-circle-art) center / 100% 100% no-repeat;
+    image-rendering: pixelated;
+    filter: var(--task-tint);
 }
 
 .task-prompt-choice.is-type input:checked + span {
-    background: var(--task-color);
-    border-color: var(--task-color);
+    --pixel-tint: var(--task-tint);
 }
 
-.task-prompt-choice.is-type input:checked + span::before {
-    background: #ffffff;
+.task-prompt-choice.is-type input:checked + span::after {
+    filter: none;
 }
 
 .task-prompt-choice input:focus-visible + span,
@@ -187,19 +186,21 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     cursor: pointer;
 }
 
+/* An on/off switch: a pixel-art pill (the pixel-pill class) with a pixel-art circle that slides along it */
 .task-prompt-switch-track {
+    --pill-size: 20px;
+    --pixel-tint: var(--tint-beige);
+
     position: relative;
     flex-shrink: 0;
     width: 36px;
     height: 20px;
     border-radius: 10px;
-    background: var(--ui-border);
-    transition: background-color 0.15s;
 }
 
 .task-prompt-switch-track::after {
@@ -210,13 +211,14 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    background: #ffffff;
+    background: var(--pixel-circle-art) center / 100% 100% no-repeat;
+    image-rendering: pixelated;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     transition: transform 0.15s ease-out;
 }
 
 .task-prompt-switch input:checked + .task-prompt-switch-track {
-    background: var(--ui-accent);
+    --pixel-tint: var(--tint-accent);
 }
 
 .task-prompt-switch input:checked + .task-prompt-switch-track::after {
@@ -251,7 +253,7 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     cursor: pointer;
 }
@@ -270,4 +272,34 @@
     background: transparent;
     border-color: transparent;
     font-weight: 500;
+}
+
+/* --- The gentle helper's suggestion (smaller steps, or a kinder name), shown in place of the fields --- */
+
+.task-prompt-suggestion {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.task-prompt.is-suggesting .task-prompt-suggestion {
+    display: flex;
+}
+
+/* Everything but the title steps aside while the suggestion shows */
+.task-prompt.is-suggesting > :not(.task-prompt-title, .task-prompt-suggestion) {
+    display: none;
+}
+
+.task-prompt-suggestion-title {
+    margin: 0;
+    font-size: var(--ui-text-small);
+    font-weight: 800;
+}
+
+.task-prompt-suggestion-text {
+    margin: 0;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    line-height: 1.4;
 }

@@ -9,7 +9,134 @@
     --ui-accent-soft: #fbeed6;
     --ui-danger: #b04a3a;
     --ui-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    --ui-font: system-ui, sans-serif;
+    /* The pixel font (loaded in public/style.css), then fallbacks for anything it doesn't have, like emoji */
+    --ui-font: 'Island Pixel', system-ui, sans-serif;
+    /* The pixel font is crisp at multiples of 8px: normal text uses the small size, titles the large one */
+    --ui-text-small: 16px;
+    --ui-text-large: 24px;
+    --ui-text-huge: 32px;
+    /* The 32x32 pixel-art icons stay crisp at whole multiples of their size in screen pixels (--screen-pixel is set in
+       UiScale.ts). These are sizes near 28px and 48px, rounded to the nearest crisp one. */
+    --pixel-icon-step: calc(var(--screen-pixel, 1px) * 32);
+    --pixel-icon-size-medium: max(var(--pixel-icon-step), round(nearest, 28px, var(--pixel-icon-step)));
+    --pixel-icon-size-large: max(var(--pixel-icon-step), round(nearest, 48px, var(--pixel-icon-step)));
+}
+
+/* Everything in the game uses the pixel font, in lowercase (it has no capital letters) */
+#game-container {
+    font-family: var(--ui-font);
+    line-height: 1.25;
+    text-transform: lowercase;
+    /* The pixel font has no bold or italic, and faked ones smear its pixels */
+    font-synthesis: none;
+    -webkit-font-smoothing: none;
+}
+
+/* Buttons and text boxes don't pick up the page's font on their own */
+#game-container button,
+#game-container input,
+#game-container textarea {
+    font-family: var(--ui-font);
+    text-transform: lowercase;
+}
+
+/* The font's letters each have 2 blank pixels on their left and none on their right, so centered labels
+   looked a pixel off to the right. One-line centered text gets nudged back by that 1 font pixel (1/8 em);
+   paragraphs and text boxes are left as they are. */
+#game-container :is(
+    button,
+    .hud-badge,
+    .hud-boost-chip,
+    .hud-streak-count,
+    .player-menu-count,
+    .inventory-item-count,
+    .notification-boost,
+    .friend-tag,
+    .task-prompt-choice span,
+    .profile-stat,
+    .travel-caption,
+    .coin-reward-label
+) {
+    text-indent: -0.125em;
+}
+
+/* Symbols and emoji come from other fonts, which are already centered */
+#game-container :is(.todo-task-delete, .bottom-panel-tab, .toast-close) {
+    text-indent: 0;
+}
+
+/* --- Pixel-art shapes ---
+   Round buttons and pill-shaped labels are drawn with pixel art (circle.png and cylinder.png, set in UiAssets.ts)
+   instead of CSS borders and backgrounds. To use them, give an element the "pixel-circle" or "pixel-pill" class.
+   - The art is white. Set --pixel-tint on the element to recolor it, e.g. --pixel-tint: var(--tint-accent)
+     (the tints are listed in PixelTints.ts).
+   - Pills: set --pill-size to the element's height, so its ends come out as half circles (30px if not set).
+   - Elements keep their border-radius only so their shadows stay round. */
+
+/* The UI grows on bigger screens (the zoom is picked in UiScale.ts). The game canvas isn't zoomed, it's already
+   drawn at the screen's full resolution. */
+#game-container > :not(canvas) {
+    zoom: var(--ui-zoom, 1);
+}
+
+/* Pixel-art pictures (anything from the PixelArt folder, like the coin, bell and cart) stay as crisp squares when
+   drawn bigger than their real size, instead of blurring. Other pictures (like the fire) are smoothed as usual. */
+#game-container img[src*="PixelArt/"] {
+    image-rendering: pixelated;
+}
+
+/* No specificity, so an element's own styles always win over these */
+:where(.pixel-circle, .pixel-pill) {
+    /* Stops a shape from picking up the tint of a shape it sits inside (like the icon on an avatar) */
+    --pixel-tint: none;
+    position: relative;
+}
+
+.pixel-circle,
+.pixel-pill {
+    /* The shape is drawn just behind the element's own content, but never behind anything else */
+    isolation: isolate;
+}
+
+.pixel-circle::before,
+.pixel-pill::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+    filter: var(--pixel-tint);
+    image-rendering: pixelated;
+}
+
+.pixel-circle::before {
+    inset: 0;
+    background: var(--pixel-circle-art) center / 100% 100% no-repeat;
+}
+
+/* cylinder.png is a 78x30 pill with 9px of clear space around it. It's cut 21px from the top and bottom and
+   24px from the sides: the ends keep their shape and the middle stretches, so a pill that gets taller (like a
+   hint that wraps onto two lines) still has rounded ends. The clear space hangs outside the element. */
+.pixel-pill::before {
+    /* How big one pixel of the art is drawn, rounded to whole screen pixels so the art stays crisp (--screen-pixel
+       is set in UiScale.ts) */
+    --pill-art-pixel: max(var(--screen-pixel, 1px), round(nearest, calc(var(--pill-size, 30px) / 30), var(--screen-pixel, 1px)));
+
+    inset: 0;
+    border: 0 solid transparent;
+    border-image-source: var(--pixel-pill-art);
+    border-image-slice: 21 24 fill;
+    border-image-width: calc(var(--pill-art-pixel) * 21) calc(var(--pill-art-pixel) * 24);
+    border-image-outset: calc(var(--pill-art-pixel) * 9);
+}
+
+/* Only shows its circle while hovered, like the close (x) buttons */
+.pixel-circle.is-shape-on-hover::before {
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+
+.pixel-circle.is-shape-on-hover:is(:hover, :focus-visible)::before {
+    opacity: 1;
 }
 
 /* Phones zoom the whole page into any text box with text under 16px, so touch screens get 16px text boxes */

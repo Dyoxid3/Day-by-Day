@@ -6,6 +6,10 @@ import type { IslandPositions, Mooring } from '../data/IslandSettings';
 import { IslandTravel } from './IslandTravel';
 import { VisitCoinDrops } from './VisitCoinDrops';
 
+// Guests who already dropped their coins this visit. Kept outside the scene, since the island scene restarts after
+// every boat trip and the guests sail in again; a guest is forgotten once their visit ends.
+const guestsWhoDroppedCoins = new Set<string>();
+
 interface GuestVisit
 {
     cat: WanderingCat;
@@ -44,6 +48,15 @@ export class VisitorManager
     private HandleOnlineStateChanged (snapshot: OnlineStateChangedPayload)
     {
         this.latestVisitorNames = new Set(snapshot.visitors);
+
+        for (const username of guestsWhoDroppedCoins)
+        {
+            if (!this.latestVisitorNames.has(username))
+            {
+                guestsWhoDroppedCoins.delete(username);
+            }
+        }
+
         this.WelcomeWaitingGuests();
 
         for (const [ username, guest ] of this.guests)
@@ -80,12 +93,15 @@ export class VisitorManager
         const cat = this.CreateCat(mooring.landing.x, mooring.landing.y);
 
         cat.SetNameTag(username);
+        EventBus.emit(GameEvents.VisitorArriving);
 
         const guest: GuestVisit = { cat, boat, mooring, arrival: Promise.resolve(), isLeaving: false };
 
         guest.arrival = this.travel.SailIn(cat, boat, mooring).then(() => {
-            if (!guest.isLeaving && cat.active)
+            // Coins only once per visit
+            if (!guest.isLeaving && cat.active && !guestsWhoDroppedCoins.has(username))
             {
+                guestsWhoDroppedCoins.add(username);
                 guest.coinDrops = new VisitCoinDrops(this.scene, cat);
             }
         });

@@ -1,30 +1,45 @@
 import { Scene, GameObjects, Geom, Input, Scale, Scenes, Math as PhaserMath } from 'phaser';
+import { GetNearestPixelPerfectZoom, GetNextPixelPerfectZoom } from './PixelSnapping';
+import { GetScreenPixelsPerCssPixel } from './ScreenResolution';
 
-// Speeds are the fraction of the remaining distance covered each frame (at 60fps): higher = snappier
+// Speeds are the fraction of the remaining distance covered each frame (at 60fps): higher = snappier.
+// Zoom settings are how many CSS pixels wide one art pixel is drawn. The camera converts them to the screen's real
+// pixels and settles on a whole number of those (see PixelSnapping), so the pixel art stays crisp.
 const cameraSettings = {
     // The default view zooms in until the framed area fills the visible screen, but no further than this
-    defaultZoom: 2,
-    // Screen px kept around the framed area when zooming out to fit it
+    defaultZoom: 3,
+    // CSS px kept around the framed area when zooming out to fit it
     defaultViewPadding: 20,
-    // Min zoom and the keep-view threshold are multiples of the current default zoom
-    minZoomFactor: 0.85,
+    // How much closer than "just fits" the default view is (1 = the whole island fits exactly)
+    defaultViewCloseness: 1.25,
+    // Min zoom and the keep-view threshold are multiples of the current default zoom. Zooming out below the
+    // default is allowed, but dragging while zoomed out still glides back to the default view.
+    minZoomFactor: 0.5,
     keepViewZoomFactor: 1.5,
-    maxZoom: 5,
-    wheelZoomSpeed: 0.001,
+    maxZoom: 6,
+    // Each scroll zooms one step (to the next whole pixel size). Scrolls closer together than this count as one,
+    // so a trackpad's stream of tiny scrolls doesn't skip several steps at once.
+    wheelStepCooldownMs: 120,
     zoomSmoothSpeed: 0.12,
     // How far past the framed area's edges the visible area may pan, in world px
     panMargin: 350,
     returnSpeed: 0.07,
-    // Pointer must move this far (px) before a press counts as a drag rather than a click
+    // Pointer must move this far (CSS px) before a press counts as a drag rather than a click
     dragThreshold: 4,
     // Double-clicking the cat zooms in this far (the pixel-art cat is small)
-    focusZoom: 3.5,
+    focusZoom: 4,
     focusFollowSpeed: 0.08,
     doubleClickMs: 300,
+    // The default view doesn't show the whole island, so it drifts to keep the cat in sight: how far from the
+    // visible edges the cat is kept (world px), and how quickly the view follows
+    keepCatInViewMargin: 24,
+    keepCatInViewSpeed: 0.04,
     // UI covering more of the screen than this (like full-screen panels on a phone) isn't framed around
     maxFramedCoverFraction: 0.8,
     // Never zooms out further than this, however little of the screen is left
-    minPossibleZoom: 0.1
+    minPossibleZoom: 0.1,
+    // Once the zoom is this close to where it's heading, it lands there exactly, so pixels end up whole-sized
+    zoomLandingDistance: 0.001
 };
 
 export class IslandCameraController
@@ -37,10 +52,14 @@ export class IslandCameraController
     private coveredLeftFraction = 0;
     private coveredRightFraction = 0;
     private coveredBottomFraction = 0;
-    private targetZoom = cameraSettings.defaultZoom;
+    // Where the zoom is easing to: always a pixel-perfect zoom, except mid-pinch while it follows the fingers
+    private targetZoom = 1;
+    private lastWheelStepTime = -Infinity;
     private isInteractionEnabled = true;
     private isFocusedOnCat = false;
     private isReturningToDefault = false;
+    // In (or gliding back to) the default view, rather than a view the player dragged or zoomed to
+    private isInDefaultView = true;
     private isDragging = false;
     private dragDistance = 0;
     private lastCatClickTime = 0;
@@ -69,7 +88,7 @@ export class IslandCameraController
             framedArea.height + margin * 2
         );
 
-        this.targetZoom = this.GetDefaultZoom();
+        this.SetTargetZoom(this.GetDefaultZoom());
         this.camera.setZoom(this.targetZoom);
         this.SnapScrollToDefaultView();
 
@@ -90,15 +109,17 @@ export class IslandCameraController
     {
         this.isFocusedOnCat = true;
         this.isReturningToDefault = false;
+        this.isInDefaultView = false;
         this.isDragging = false;
-        this.targetZoom = cameraSettings.focusZoom;
+        this.SetTargetZoom(cameraSettings.focusZoom * GetScreenPixelsPerCssPixel());
     }
 
     ReturnToDefaultView ()
     {
         this.isFocusedOnCat = false;
         this.isReturningToDefault = true;
-        this.targetZoom = this.GetDefaultZoom();
+        this.isInDefaultView = true;
+        this.SetTargetZoom(this.GetDefaultZoom());
     }
 
     // Call when UI covers part of the screen, so the camera frames things in the part still visible
@@ -122,7 +143,8 @@ export class IslandCameraController
     {
         this.isFocusedOnCat = false;
         this.isReturningToDefault = false;
-        this.targetZoom = this.GetDefaultZoom();
+        this.isInDefaultView = true;
+        this.SetTargetZoom(this.GetDefaultZoom());
         this.camera.setZoom(this.targetZoom);
         this.SnapScrollToDefaultView();
         this.ClampVisibleAreaToPanLimits();
@@ -165,14 +187,35 @@ export class IslandCameraController
         };
     }
 
+    // Rounded to the nearest pixel-perfect zoom, so it may show a little more or less than the settings ask for
     private GetDefaultZoom (): number
     {
+        const pixelRatio = GetScreenPixelsPerCssPixel();
         const visibleRect = this.GetVisibleScreenRect();
-        const padding = cameraSettings.defaultViewPadding * 2;
+        const padding = cameraSettings.defaultViewPadding * pixelRatio * 2;
         const fitZoomX = (visibleRect.width - padding) / this.framedArea.width;
         const fitZoomY = (visibleRect.height - padding) / this.framedArea.height;
 
-        return Math.max(cameraSettings.minPossibleZoom, Math.min(cameraSettings.defaultZoom, fitZoomX, fitZoomY));
+        const closeZoom = Math.min(fitZoomX, fitZoomY) * cameraSettings.defaultViewCloseness;
+        const zoom = Math.max(cameraSettings.minPossibleZoom, Math.min(cameraSettings.defaultZoom * pixelRatio, closeZoom));
+
+        return this.GetPixelPerfectZoom(zoom);
+    }
+
+    private GetMaxZoom (): number
+    {
+        return Math.max(1, Math.floor(cameraSettings.maxZoom * GetScreenPixelsPerCssPixel()));
+    }
+
+    // The nearest zoom that keeps the pixel art crisp, no closer than the max zoom
+    private GetPixelPerfectZoom (zoom: number): number
+    {
+        return Math.min(GetNearestPixelPerfectZoom(zoom), this.GetMaxZoom());
+    }
+
+    private SetTargetZoom (zoom: number)
+    {
+        this.targetZoom = this.GetPixelPerfectZoom(zoom);
     }
 
     // Scroll that puts a world point at the center of the visible screen area, at the given zoom
@@ -190,9 +233,38 @@ export class IslandCameraController
 
     private SnapScrollToDefaultView ()
     {
-        const scroll = this.GetScrollToShowAtVisibleCenter(this.framedArea.centerX, this.framedArea.centerY, this.camera.zoom);
+        const center = this.GetDefaultViewCenter();
+        const scroll = this.GetScrollToShowAtVisibleCenter(center.x, center.y, this.camera.zoom);
 
         this.camera.setScroll(scroll.x, scroll.y);
+    }
+
+    // The point the default view centers on: the middle of the island, moved just enough to keep the cat in
+    // sight (the default view is close enough that it doesn't show the whole island)
+    private GetDefaultViewCenter ()
+    {
+        const center = { x: this.framedArea.centerX, y: this.framedArea.centerY };
+
+        // Not during boat trips or while placing items, when the camera is meant to hold still
+        if (!this.isInteractionEnabled)
+        {
+            return center;
+        }
+
+        const visibleRect = this.GetVisibleScreenRect();
+        const zoom = this.GetDefaultZoom();
+        const margin = cameraSettings.keepCatInViewMargin;
+        const halfVisibleWidth = visibleRect.width / zoom / 2;
+        const halfVisibleHeight = visibleRect.height / zoom / 2;
+        const catLeft = this.cat.x - this.cat.displayWidth / 2 - margin;
+        const catRight = this.cat.x + this.cat.displayWidth / 2 + margin;
+        const catTop = this.cat.y - this.cat.displayHeight * this.cat.originY - margin;
+        const catBottom = this.cat.y + this.cat.displayHeight * (1 - this.cat.originY) + margin;
+
+        return {
+            x: ClampToShow(center.x, catLeft, catRight, halfVisibleWidth),
+            y: ClampToShow(center.y, catTop, catBottom, halfVisibleHeight)
+        };
     }
 
     private HandleCatClick ()
@@ -231,9 +303,10 @@ export class IslandCameraController
             return;
         }
 
-        // Grabbing mid-return freezes the camera where it is so the drag continues from there
+        // Grabbing mid-return freezes the camera where it is so the drag continues from there (settling on the
+        // nearest pixel-perfect zoom if it was mid-zoom)
         this.isReturningToDefault = false;
-        this.targetZoom = this.camera.zoom;
+        this.SetTargetZoom(this.camera.zoom);
         this.isDragging = true;
         this.dragDistance = 0;
     }
@@ -259,6 +332,12 @@ export class IslandCameraController
         this.dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
         this.camera.scrollX -= deltaX / this.camera.zoom;
         this.camera.scrollY -= deltaY / this.camera.zoom;
+
+        // A real drag (not just a click) leaves the default view until the camera glides back
+        if (this.IsFarEnoughToDrag())
+        {
+            this.isInDefaultView = false;
+        }
     }
 
     // The two fingers touching the screen, when there are two
@@ -289,6 +368,7 @@ export class IslandCameraController
         else
         {
             this.isPinching = true;
+            this.isInDefaultView = false;
             this.isDragging = false;
             this.isReturningToDefault = false;
             this.pinchStartDistance = distance;
@@ -297,8 +377,9 @@ export class IslandCameraController
 
         const minZoom = this.GetDefaultZoom() * cameraSettings.minZoomFactor;
 
-        // Zooms toward the point between the fingers, like scroll-zoom does toward the mouse
-        this.targetZoom = PhaserMath.Clamp(this.pinchStartZoom * (distance / this.pinchStartDistance), minZoom, cameraSettings.maxZoom);
+        // Zooms toward the point between the fingers, like scroll-zoom does toward the mouse. Follows the fingers
+        // exactly, then settles on a pixel-perfect zoom when they lift.
+        this.targetZoom = PhaserMath.Clamp(this.pinchStartZoom * (distance / this.pinchStartDistance), minZoom, this.GetMaxZoom());
         this.zoomAnchorX = midpointX;
         this.zoomAnchorY = midpointY;
         this.pinchMidpointX = midpointX;
@@ -307,10 +388,11 @@ export class IslandCameraController
 
     private HandlePointerUp ()
     {
-        // Lifting a finger ends the pinch; the view stays where it was pinched to
+        // Lifting a finger ends the pinch; the view stays about where it was pinched to
         if (this.isPinching)
         {
             this.isPinching = false;
+            this.SetTargetZoom(this.targetZoom);
             return;
         }
 
@@ -323,7 +405,7 @@ export class IslandCameraController
 
         const keepViewZoom = this.GetDefaultZoom() * cameraSettings.keepViewZoomFactor;
 
-        if (this.dragDistance >= cameraSettings.dragThreshold && this.camera.zoom < keepViewZoom)
+        if (this.IsFarEnoughToDrag() && this.camera.zoom < keepViewZoom)
         {
             this.ReturnToDefaultView();
         }
@@ -337,19 +419,46 @@ export class IslandCameraController
         }
 
         this.isReturningToDefault = false;
+        this.isInDefaultView = false;
         this.zoomAnchorX = pointer.x;
         this.zoomAnchorY = pointer.y;
 
-        const newZoom = this.targetZoom * (1 - deltaY * cameraSettings.wheelZoomSpeed);
-        const minZoom = this.GetDefaultZoom() * cameraSettings.minZoomFactor;
+        // Trackpads send a stream of tiny scrolls, so only one step is taken per short burst
+        const now = this.scene.time.now;
 
-        this.targetZoom = PhaserMath.Clamp(newZoom, minZoom, cameraSettings.maxZoom);
+        if (deltaY === 0 || now - this.lastWheelStepTime < cameraSettings.wheelStepCooldownMs)
+        {
+            return;
+        }
+
+        this.lastWheelStepTime = now;
+
+        // Every scroll steps to the next pixel-perfect zoom in or out, unless that's past the zoom limits
+        const minZoom = this.GetDefaultZoom() * cameraSettings.minZoomFactor;
+        const nextZoom = GetNextPixelPerfectZoom(this.targetZoom, deltaY < 0 ? 1 : -1);
+
+        if (nextZoom > this.GetMaxZoom() || nextZoom < Math.min(minZoom, this.targetZoom))
+        {
+            return;
+        }
+
+        this.SetTargetZoom(nextZoom);
+    }
+
+    private IsFarEnoughToDrag (): boolean
+    {
+        return this.dragDistance >= cameraSettings.dragThreshold * GetScreenPixelsPerCssPixel();
     }
 
     private HandleUpdate (_time: number, delta: number)
     {
         const previousZoom = this.camera.zoom;
-        const nextZoom = EaseToward(previousZoom, this.targetZoom, cameraSettings.zoomSmoothSpeed, delta);
+        let nextZoom = EaseToward(previousZoom, this.targetZoom, cameraSettings.zoomSmoothSpeed, delta);
+
+        if (Math.abs(nextZoom - this.targetZoom) < cameraSettings.zoomLandingDistance)
+        {
+            nextZoom = this.targetZoom;
+        }
 
         this.camera.setZoom(nextZoom);
 
@@ -359,7 +468,8 @@ export class IslandCameraController
         }
         else if (this.isReturningToDefault)
         {
-            const target = this.EaseScrollToShow(this.framedArea.centerX, this.framedArea.centerY, cameraSettings.returnSpeed, delta);
+            const center = this.GetDefaultViewCenter();
+            const target = this.EaseScrollToShow(center.x, center.y, cameraSettings.returnSpeed, delta);
             const hasArrived = Math.abs(this.camera.scrollX - target.x) < 0.5
                 && Math.abs(this.camera.scrollY - target.y) < 0.5
                 && Math.abs(this.camera.zoom - this.targetZoom) < 0.001;
@@ -370,6 +480,13 @@ export class IslandCameraController
                 this.SnapScrollToDefaultView();
                 this.isReturningToDefault = false;
             }
+        }
+        else if (this.isInDefaultView && !this.isDragging && !this.isPinching)
+        {
+            // Settled in the default view: drifts along if the cat wanders toward the edge
+            const center = this.GetDefaultViewCenter();
+
+            this.EaseScrollToShow(center.x, center.y, cameraSettings.keepCatInViewSpeed, delta);
         }
         else
         {
@@ -435,6 +552,18 @@ function EaseToward (current: number, target: number, speed: number, delta: numb
     const amount = 1 - Math.pow(1 - speed, delta / (1000 / 60));
 
     return current + (target - current) * amount;
+}
+
+// Moves a view's center (along one axis) just enough that [start, end] is inside a view of the given half-size,
+// or centers on [start, end] if it's bigger than the view
+function ClampToShow (center: number, start: number, end: number, halfViewSize: number): number
+{
+    if (end - start >= halfViewSize * 2)
+    {
+        return (start + end) / 2;
+    }
+
+    return PhaserMath.Clamp(center, end - halfViewSize, start + halfViewSize);
 }
 
 // Keeps a span [start, start + size] inside [min, max], centering it if it doesn't fit

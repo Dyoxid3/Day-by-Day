@@ -26,10 +26,10 @@ export function FormatMinutesLeft (remainingMs: number): string
     return `${Math.max(1, Math.ceil(remainingMs / 60000))} min left`;
 }
 
-// A coin boost as a multiplier, e.g. 20 → "×1.2"
+// A coin boost as a multiplier, e.g. 20 → "x1.2"
 export function FormatBoostMultiplier (percent: number): string
 {
-    return `×${Number((1 + percent / 100).toFixed(2))}`;
+    return `x${Number((1 + percent / 100).toFixed(2))}`;
 }
 
 // e.g. 1 → "1 friend", 3 → "3 friends"

@@ -50,16 +50,15 @@
     margin: 0;
     padding: 12px 4px;
     color: var(--ui-text-muted);
-    font-size: 14px;
+    font-size: var(--ui-text-small);
 }
 
 .todo-list-divider {
     margin: 12px 2px 8px;
     color: var(--ui-text-muted);
-    font-size: 11px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    text-transform: lowercase;
 }
 
 /* --- Task rows --- */
@@ -157,7 +156,7 @@
     align-self: flex-start;
     max-width: 100%;
     overflow: hidden;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -190,30 +189,30 @@
 .todo-task-details {
     overflow: hidden;
     color: var(--ui-text-muted);
-    font-size: 11.5px;
+    font-size: var(--ui-text-small);
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
 .todo-task-importance {
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 800;
-    letter-spacing: 1px;
 }
 
 /* Reaches the row's full height, so hovering anywhere at its right end counts */
 .todo-task-delete-zone {
     align-self: stretch;
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    gap: 2px;
     margin: calc(var(--todo-row-padding-y) * -1) 0;
 }
 
 .todo-task-delete {
     display: grid;
     place-items: center;
-    width: 30px;
-    height: 30px;
+    width: 36px;
+    height: 36px;
     padding: 0;
     background: transparent;
     border: none;
@@ -226,6 +225,8 @@
     transition: opacity 0.15s ease-out, transform 0.15s ease-out, background-color 0.15s;
 }
 
+.todo-task-delete-zone:hover .todo-task-smaller,
+.todo-task-smaller:focus-visible,
 .todo-task-delete-zone:hover .todo-task-delete,
 .todo-task-delete:focus-visible {
     opacity: 1;
@@ -245,8 +246,8 @@
 }
 
 .todo-task-delete-icon {
-    width: 18px;
-    height: 18px;
+    width: var(--pixel-icon-size-medium);
+    height: var(--pixel-icon-size-medium);
     object-fit: contain;
 }
 
@@ -267,17 +268,20 @@
     padding-top: 10px;
 }
 
+/* Drawn with the pixel-art pill (the pixel-pill class) */
 .todo-list-button {
-    padding: 6px 12px;
-    background: var(--ui-surface);
-    border: 2px solid var(--ui-border);
+    --pill-size: 36px;
+
+    padding: 8px 14px;
+    background: none;
+    border: none;
     border-radius: 999px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     cursor: pointer;
-    transition: transform 0.12s ease-out, background-color 0.15s, border-color 0.15s;
+    transition: transform 0.12s ease-out;
 }
 
 .todo-list-button:hover {
@@ -290,12 +294,51 @@
 
 /* "Show all tasks" while it's switched on */
 .todo-list-button[aria-pressed="true"] {
-    background: var(--ui-accent-soft);
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent-soft);
 }
 
 .todo-list-button.is-primary {
-    background: var(--ui-accent);
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent);
+
     color: #ffffff;
+}
+
+/* Set aside late in the day: no longer part of today's progress, but still there to do (checking one makes it count) */
+.todo-task.is-exempt {
+    opacity: 0.55;
+}
+
+.todo-task.is-exempt .todo-task-checkbox {
+    border-style: dashed;
+}
+
+/* "smaller": asks the gentle helper for smaller steps. Shows with the trash button, while the helpers are on. */
+.todo-task-smaller {
+    --pill-size: 26px;
+
+    flex-shrink: 0;
+    padding: 3px 9px;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    white-space: nowrap;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateX(6px) scale(0.85);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+.todo-task-smaller:hover {
+    --pixel-tint: var(--tint-accent-soft);
+}
+
+/* Touch screens can't hover, so it always shows (a little faded), like the trash button */
+@media (hover: none) {
+    .todo-task-smaller {
+        opacity: 0.6;
+        transform: none;
+    }
 }

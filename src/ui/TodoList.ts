@@ -1,4 +1,8 @@
-import { EventBus, GameEvents, type TasksChangedPayload } from '../game/EventBus';
+import { EventBus, GameEvents, type SmallerStepsRequestedPayload, type TasksChangedPayload } from '../game/EventBus';
+import { gentleHelpers } from '../game/state/GentleHelpers';
+import { moodCheckIn } from '../game/state/MoodCheckIn';
+import { feelingsThatRest } from '../game/data/DaySettings';
+import { GetUiZoom } from './UiScale';
 import { playerTaskList } from '../game/state/TaskList';
 import { GetImportanceLevel, taskTypes, type Task } from '../game/data/TaskTypes';
 import { coinRewardSettings } from '../game/data/CoinRewardSettings';
@@ -48,10 +52,10 @@ export class TodoList
         this.listElement.className = 'todo-list-items';
         this.listElement.addEventListener('scroll', () => this.UpdateScrollFades());
 
-        this.showAllButton = CreateButton('Show all tasks', 'todo-list-button', () => this.ToggleShowAllTasks());
+        this.showAllButton = CreateButton('Show all tasks', 'todo-list-button pixel-pill', () => this.ToggleShowAllTasks());
         this.showAllButton.setAttribute('aria-pressed', 'false');
 
-        const addTaskButton = CreateButton('+ Add task', 'todo-list-button is-primary', () => this.OpenNewTaskPrompt());
+        const addTaskButton = CreateButton('+ Add task', 'todo-list-button pixel-pill is-primary', () => this.OpenNewTaskPrompt());
 
         const actionsElement = document.createElement('div');
         actionsElement.className = 'todo-list-actions';
@@ -65,6 +69,12 @@ export class TodoList
         this.Render();
 
         EventBus.on(GameEvents.TasksChanged, this.HandleTasksChanged, this);
+        EventBus.on(GameEvents.PlayerDataLoaded, this.RequestRender, this);
+        // The empty list's note depends on how the player said they feel
+        EventBus.on(GameEvents.FeelingShared, this.RequestRender, this);
+        EventBus.on(GameEvents.GentleHelpersChanged, this.RequestRender, this);
+        // Planning the day (see DayStartFlow) adds tasks with the same menu
+        EventBus.on(GameEvents.NewTaskPromptRequested, this.OpenNewTaskPrompt, this);
         // Whether the list can scroll also changes when the window is resized
         new ResizeObserver(() => this.UpdateScrollFades()).observe(this.listElement);
     }
@@ -126,7 +136,9 @@ export class TodoList
     private Render ()
     {
         const tasks = playerTaskList.GetSortedTasks();
-        const openTasks = tasks.filter(task => !task.isCompleted);
+        const openTasks = tasks.filter(task => !task.isCompleted && !task.isExempt);
+        // Set aside late in the day (see EveningFocus); they no longer count, but can still be done
+        const waitingTasks = tasks.filter(task => !task.isCompleted && task.isExempt);
         const finishedTasks = tasks.filter(task => task.isCompleted);
         const listContent: HTMLElement[] = [];
 
@@ -134,7 +146,21 @@ export class TodoList
 
         if (openTasks.length === 0)
         {
-            const message = tasks.length === 0 ? 'No tasks yet. Add one below!' : 'All done for today!';
+            let message = 'All done for today. Well done.';
+
+            if (tasks.length === 0)
+            {
+                // Resting is only suggested on a day the player said was terrible
+                const feeling = moodCheckIn.GetFeeling();
+
+                message = feeling !== null && feelingsThatRest.includes(feeling)
+                    ? 'Nothing planned today, and that is okay. Rest, and add something small only if you want to.'
+                    : 'Nothing planned yet. Add something small below.';
+            }
+            else if (waitingTasks.length > 0)
+            {
+                message = 'Everything that mattered today is done.';
+            }
 
             listContent.push(CreateTextElement('p', 'todo-list-message', message));
         }
@@ -142,6 +168,16 @@ export class TodoList
         for (const task of openTasks)
         {
             listContent.push(this.CreateTaskRow(task));
+        }
+
+        if (waitingTasks.length > 0)
+        {
+            listContent.push(CreateTextElement('div', 'todo-list-divider', `Can wait for another day (${waitingTasks.length})`));
+
+            for (const task of waitingTasks)
+            {
+                listContent.push(this.CreateTaskRow(task));
+            }
         }
 
         if (this.isShowingAllTasks && finishedTasks.length > 0)
@@ -164,6 +200,7 @@ export class TodoList
         const row = document.createElement('div');
         row.className = 'todo-task';
         row.classList.toggle('is-completed', task.isCompleted);
+        row.classList.toggle('is-exempt', task.isExempt);
         row.style.setProperty('--task-color', taskTypes[task.typeId].color);
 
         const checkbox = document.createElement('button');
@@ -191,6 +228,13 @@ export class TodoList
         // The trash button only shows while the pointer is over this strip at the row's right end
         const deleteZone = document.createElement('div');
         deleteZone.className = 'todo-task-delete-zone';
+
+        // With the gentle helpers on, an unfinished task can be broken into smaller steps
+        if (gentleHelpers.IsActive() && !task.isCompleted && !task.isExempt)
+        {
+            deleteZone.append(CreateSmallerButton(task));
+        }
+
         deleteZone.append(CreateDeleteButton(task));
 
         row.append(checkbox, textElement, importanceElement, deleteZone);
@@ -264,8 +308,10 @@ export class TodoList
         const settings = todoAnimationSettings;
         const rootBounds = this.rootElement.getBoundingClientRect();
         const checkboxBounds = checkbox.getBoundingClientRect();
-        const centerX = checkboxBounds.left + checkboxBounds.width / 2 - rootBounds.left;
-        const centerY = checkboxBounds.top + checkboxBounds.height / 2 - rootBounds.top;
+        // Page positions are zoomed, left/top inside the UI are not
+        const uiZoom = GetUiZoom();
+        const centerX = (checkboxBounds.left + checkboxBounds.width / 2 - rootBounds.left) / uiZoom;
+        const centerY = (checkboxBounds.top + checkboxBounds.height / 2 - rootBounds.top) / uiZoom;
 
         for (let index = 0; index < settings.burstParticleCount; index++)
         {
@@ -341,34 +387,42 @@ export class TodoList
     }
 }
 
+// Asks the gentle helper to break the task into a few tiny first steps (see GentleHelpers)
+function CreateSmallerButton (task: Task): HTMLButtonElement
+{
+    const smallerButton = CreateButton('smaller', 'todo-task-smaller pixel-pill', () => {
+        const payload: SmallerStepsRequestedPayload = { taskId: task.id };
+
+        EventBus.emit(GameEvents.SmallerStepsRequested, payload);
+    });
+
+    smallerButton.title = 'Break this into smaller steps';
+    smallerButton.setAttribute('aria-label', `Break ${task.name} into smaller steps`);
+
+    return smallerButton;
+}
+
 function CreateDeleteButton (task: Task): HTMLButtonElement
 {
     const deleteButton = CreateButton('', 'todo-task-delete', () => playerTaskList.DeleteTask(task.id));
     deleteButton.setAttribute('aria-label', `Delete ${task.name}`);
 
-    if (uiAssets.trash)
-    {
-        const trashIcon = document.createElement('img');
-        trashIcon.className = 'todo-task-delete-icon';
-        trashIcon.src = uiAssets.trash;
-        trashIcon.alt = '';
-        trashIcon.draggable = false;
-        deleteButton.append(trashIcon);
-    }
-    else
-    {
-        deleteButton.textContent = '🗑️';
-    }
+    const trashIcon = document.createElement('img');
+    trashIcon.className = 'todo-task-delete-icon';
+    trashIcon.src = uiAssets.trash;
+    trashIcon.alt = '';
+    trashIcon.draggable = false;
+    deleteButton.append(trashIcon);
 
     return deleteButton;
 }
 
-// e.g. "9:30 AM · Health", or just "Health" when the task has no set time
+// e.g. "9:30 AM - Health", or just "Health" when the task has no set time
 function DescribeTask (task: Task): string
 {
     const typeLabel = taskTypes[task.typeId].label;
 
-    return task.scheduledMinutes === null ? typeLabel : `${FormatTimeOfDay(task.scheduledMinutes)} · ${typeLabel}`;
+    return task.scheduledMinutes === null ? typeLabel : `${FormatTimeOfDay(task.scheduledMinutes)} - ${typeLabel}`;
 }
 
 // Follows the player's own clock format (9:30 AM or 09:30)

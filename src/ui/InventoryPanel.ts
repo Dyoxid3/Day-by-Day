@@ -35,8 +35,8 @@ export class InventoryPanel
 
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
-        closeButton.className = 'inventory-close';
-        closeButton.textContent = '×';
+        closeButton.className = 'inventory-close pixel-circle is-shape-on-hover';
+        closeButton.textContent = 'x';
         closeButton.setAttribute('aria-label', 'Close inventory');
         closeButton.addEventListener('click', () => this.SetOpen(false));
 
@@ -57,6 +57,7 @@ export class InventoryPanel
         EventBus.on(GameEvents.InventoryPanelRequested, () => this.SetOpen(true));
         EventBus.on(GameEvents.UiPanelToggled, this.HandleUiPanelToggled, this);
         EventBus.on(GameEvents.InventoryChanged, this.Render, this);
+        EventBus.on(GameEvents.PlayerDataLoaded, this.Render, this);
         // Placing is only possible on your own island, and not mid-trip
         EventBus.on(GameEvents.TravelStarted, this.Render, this);
         EventBus.on(GameEvents.TravelFinished, this.Render, this);
@@ -90,7 +91,7 @@ export class InventoryPanel
             isOpen: this.isOpen,
             coveredEdge: 'right',
             // Measured rather than assumed, since the panel has a minimum width on small screens
-            coveredFraction: this.panelElement.offsetWidth / this.container.clientWidth
+            coveredFraction: this.panelElement.getBoundingClientRect().width / this.container.getBoundingClientRect().width
         };
 
         EventBus.emit(GameEvents.UiPanelToggled, payload);
@@ -151,8 +152,8 @@ export class InventoryPanel
         imageElement.draggable = false;
 
         const countElement = document.createElement('span');
-        countElement.className = 'inventory-item-count';
-        countElement.textContent = `×${count}`;
+        countElement.className = 'inventory-item-count pixel-pill';
+        countElement.textContent = `x${count}`;
 
         const nameElement = document.createElement('span');
         nameElement.className = 'inventory-item-name';

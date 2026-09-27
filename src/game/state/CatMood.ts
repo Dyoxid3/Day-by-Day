@@ -1,16 +1,23 @@
 import { EventBus, GameEvents, type CatMoodChangedPayload, type TasksChangedPayload } from '../EventBus';
 import type { CatExpression } from '../data/CatAppearance';
+import type { Feeling } from '../data/DaySettings';
 import { playerInventory } from './Inventory';
 import { playerIslandLayout } from './IslandLayout';
+import { moodCheckIn } from './MoodCheckIn';
 
 // A prototype of the cat's mood. Happiness (0-100) mixes two things:
 // - comfort: how many items the player owns for the island (placed or stored), which lasts
-// - attention: goes up when the player does things (buying and placing items, finishing tasks) and slowly drains
-//   away when they don't, so a neglected cat gets sadder
+// - attention: goes up when the player does things (buying and placing items, finishing tasks), and while they're
+//   doing nothing it drifts toward a baseline set by how they said they're feeling today, so an idle cat comes to
+//   reflect the player's own mood rather than always slipping toward miserable
 const catMoodSettings = {
     startingAttention: 80,
-    // Attention drained each minute (neglect)
-    attentionLostPerMinute: 10,
+    // Attention drifts toward this when the player hasn't checked in yet today
+    defaultBaselineAttention: 55,
+    // With a check-in, idle attention settles here; doing things can push it above or below for a while
+    baselineAttentionByFeeling: { good: 85, okay: 60, bad: 35, terrible: 15 } satisfies Record<Feeling, number>,
+    // How far attention drifts toward its baseline each minute of doing nothing
+    attentionDriftPerMinute: 6,
     attentionForBuyingItem: 8,
     attentionForPlacingItem: 15,
     attentionForFinishingTask: 10,
@@ -33,15 +40,17 @@ export interface CatMoodDefinition
     minHappiness: number;
     // Expressions this mood can show, with how likely each one is
     expressions: Partial<Record<CatExpression, number>>;
+    // Whether the cat does its idle breathing animation while standing (a sad cat just stands still)
+    playsIdleAnimation: boolean;
 }
 
 // Happiest first
 export const catMoods: CatMoodDefinition[] = [
-    { name: 'thriving', minHappiness: 70, expressions: { satisfied: 6, cool: 3, default: 1 } },
-    { name: 'content', minHappiness: 45, expressions: { default: 6, cool: 3, satisfied: 1 } },
-    { name: 'meh', minHappiness: 28, expressions: { default: 4, dazed: 4, sad: 2 } },
-    { name: 'sad', minHappiness: 12, expressions: { sad: 8, dazed: 2 } },
-    { name: 'miserable', minHappiness: 0, expressions: { defeated: 1 } }
+    { name: 'thriving', minHappiness: 70, expressions: { satisfied: 6, cool: 3, default: 1 }, playsIdleAnimation: true },
+    { name: 'content', minHappiness: 45, expressions: { default: 6, cool: 3, satisfied: 1 }, playsIdleAnimation: true },
+    { name: 'meh', minHappiness: 28, expressions: { default: 4, dazed: 4, sad: 2 }, playsIdleAnimation: true },
+    { name: 'sad', minHappiness: 12, expressions: { sad: 8, dazed: 2 }, playsIdleAnimation: false },
+    { name: 'miserable', minHappiness: 0, expressions: { defeated: 1 }, playsIdleAnimation: false }
 ];
 
 // Tracks the player's cat's mood and which face it shows. The island scene just draws what this decides.
@@ -73,6 +82,7 @@ class CatMood
         });
         EventBus.on(GameEvents.IslandLayoutChanged, this.UpdateComfort, this);
         EventBus.on(GameEvents.InventoryChanged, this.UpdateComfort, this);
+        EventBus.on(GameEvents.PlayerDataLoaded, this.UpdateComfort, this);
 
         setInterval(() => this.Tick(), catMoodSettings.tickMs);
     }
@@ -123,8 +133,27 @@ class CatMood
 
     private Tick ()
     {
-        this.attention = Math.max(0, this.attention - catMoodSettings.attentionLostPerMinute * catMoodSettings.tickMs / 60000);
+        const baseline = this.GetBaselineAttention();
+        const driftAmount = catMoodSettings.attentionDriftPerMinute * catMoodSettings.tickMs / 60000;
+
+        if (this.attention > baseline)
+        {
+            this.attention = Math.max(baseline, this.attention - driftAmount);
+        }
+        else if (this.attention < baseline)
+        {
+            this.attention = Math.min(baseline, this.attention + driftAmount);
+        }
+
         this.Refresh();
+    }
+
+    // What idle attention drifts toward: how the player said they're feeling today, or a neutral default before they check in
+    private GetBaselineAttention (): number
+    {
+        const feeling = moodCheckIn.GetFeeling();
+
+        return feeling ? catMoodSettings.baselineAttentionByFeeling[feeling] : catMoodSettings.defaultBaselineAttention;
     }
 
     // Moves to a new mood if happiness crossed a line, and changes face when it's time to

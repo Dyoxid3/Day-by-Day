@@ -1,5 +1,10 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { OnlinePrototypeServer } from '../server/OnlinePrototypeServer.mjs';
+import { GentleHelperServer } from '../server/GentleHelperServer.mjs';
+
+// GEMINI_API_KEY (and optionally GEMINI_MODEL) for the gentle helpers, from .env.local (which git ignores).
+// Only the preview server reads them; they're never built into the game.
+const env = loadEnv('production', process.cwd(), '');
 
 const phasermsg = () => {
     return {
@@ -44,7 +49,8 @@ export default defineConfig({
     },
     plugins: [
         phasermsg(),
-        // Only used by `vite preview`, so a built game can still reach the online features
-        OnlinePrototypeServer()
+        // Only used by `vite preview`, so a built game can still reach the online features and gentle helpers
+        OnlinePrototypeServer(),
+        GentleHelperServer({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL })
     ]
 });

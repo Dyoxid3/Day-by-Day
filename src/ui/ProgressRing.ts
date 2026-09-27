@@ -1,14 +1,14 @@
 import { EventBus, GameEvents, type TasksChangedPayload } from '../game/EventBus';
 import { playerTaskList } from '../game/state/TaskList';
 import { GetCompletionPercent, taskTypeIds, taskTypes, type DailyProgress, type TaskTypeId } from '../game/data/TaskTypes';
+import { uiAssets } from './UiAssets';
 import './ProgressRing.css';
 
 const ringSettings = {
-    // In SVG units: the ring is drawn in a 120 x 120 box, then scaled to fit the panel
-    radius: 50,
-    thickness: 12,
-    // Space between sections of different colors
-    sectionGap: 1.6,
+    // Clear pixels between sections of different colors, measured along the ring (in the art's pixels)
+    sectionGapPx: 1.5,
+    // Used until the track color can be read from the CSS (--ring-track-color)
+    fallbackTrackColor: '#efe4d3',
     fillDurationMs: 900,
     // Lets a task's check-off animation start before the ring moves
     fillDelayMs: 150,
@@ -16,26 +16,33 @@ const ringSettings = {
     pulseDurationMs: 350
 };
 
-const svgNamespace = 'http://www.w3.org/2000/svg';
-const ringCenter = 60;
-const ringCircumference = 2 * Math.PI * ringSettings.radius;
-
 type TypeFractions = Record<TaskTypeId, number>;
+type Rgb = [ number, number, number ];
 
-interface RingSection
+// One pixel of the ring art, with where it sits around the ring
+interface RingPixel
 {
-    arc: SVGCircleElement;
-    tooltip: SVGTitleElement;
+    index: number;
+    // How far around the ring, clockwise from the top: 0 to 1
+    fraction: number;
+    // The ring's length at this pixel's distance from the middle, so gaps stay the same width inside and out
+    circumference: number;
 }
 
-// Today's progress. The ring fills as tasks are checked off: each task type gets its own colored section,
-// sized by how many tasks of that type are done, with the percentage done in the middle.
+// Today's progress. The ring fills as tasks are checked off: each task type gets its own colored section, sized by
+// how many tasks of that type are done, with the percentage done in the middle.
+// The ring is the pixel-art ring (uiAssets.progressRing) colored in pixel by pixel at its own size, then drawn bigger
+// by a whole number of screen pixels (see ProgressRing.css), so it stays pixel perfect.
 export class ProgressRing
 {
     private rootElement: HTMLElement;
-    private graphicElement: SVGSVGElement;
-    private percentValueElement: SVGTSpanElement;
-    private sections = new Map<TaskTypeId, RingSection>();
+    private graphicElement: HTMLDivElement;
+    private canvasElement: HTMLCanvasElement;
+    private percentValueElement: HTMLSpanElement;
+    private ringPixels: RingPixel[] = [];
+    private ringImage?: ImageData;
+    private trackColor?: Rgb;
+    private labelsByType = {} as Record<TaskTypeId, string>;
     private shownFractions: TypeFractions;
     private startFractions: TypeFractions;
     private targetFractions: TypeFractions;
@@ -54,35 +61,28 @@ export class ProgressRing
         headingElement.className = 'bottom-panel-heading';
         headingElement.textContent = "Today's progress";
 
-        this.graphicElement = CreateSvgElement('svg', {
-            class: 'progress-ring-graphic',
-            viewBox: `0 0 ${ringCenter * 2} ${ringCenter * 2}`,
-            role: 'img'
+        this.graphicElement = document.createElement('div');
+        this.graphicElement.className = 'progress-ring-graphic';
+        this.graphicElement.setAttribute('role', 'img');
+
+        this.canvasElement = document.createElement('canvas');
+        this.canvasElement.className = 'progress-ring-canvas';
+        // Hovering a section shows its task type and how many are done
+        this.canvasElement.addEventListener('pointermove', event => this.UpdateHoverText(event));
+        this.canvasElement.addEventListener('pointerleave', () => {
+            this.graphicElement.title = '';
         });
 
-        const ringAttributes = { cx: ringCenter, cy: ringCenter, r: ringSettings.radius, 'stroke-width': ringSettings.thickness };
-        const track = CreateSvgElement('circle', { ...ringAttributes, class: 'progress-ring-track' });
+        const percentElement = document.createElement('p');
+        percentElement.className = 'progress-ring-percent';
+        this.percentValueElement = document.createElement('span');
 
-        // Turned so the sections start at the top and run clockwise
-        const sectionGroup = CreateSvgElement('g', { transform: `rotate(-90 ${ringCenter} ${ringCenter})` });
-
-        for (const typeId of taskTypeIds)
-        {
-            const arc = CreateSvgElement('circle', { ...ringAttributes, class: 'progress-ring-section', stroke: taskTypes[typeId].color });
-            const tooltip = CreateSvgElement('title', {});
-
-            arc.append(tooltip);
-            sectionGroup.append(arc);
-            this.sections.set(typeId, { arc, tooltip });
-        }
-
-        const percentElement = CreateSvgElement('text', { class: 'progress-ring-percent', x: ringCenter, y: ringCenter, dy: '0.35em' });
-        this.percentValueElement = CreateSvgElement('tspan', {});
-        const percentSignElement = CreateSvgElement('tspan', { class: 'progress-ring-percent-sign' });
+        const percentSignElement = document.createElement('span');
+        percentSignElement.className = 'progress-ring-percent-sign';
         percentSignElement.textContent = '%';
         percentElement.append(this.percentValueElement, percentSignElement);
 
-        this.graphicElement.append(track, sectionGroup, percentElement);
+        this.graphicElement.append(this.canvasElement, percentElement);
         this.rootElement.append(headingElement, this.graphicElement);
         parent.append(this.rootElement);
 
@@ -94,10 +94,77 @@ export class ProgressRing
         this.shownPercent = GetCompletionPercent(progress);
         this.startPercent = this.shownPercent;
         this.targetPercent = this.shownPercent;
+        this.LoadRingArt();
         this.Draw();
         this.UpdateLabels(progress);
 
         EventBus.on(GameEvents.TasksChanged, this.HandleTasksChanged, this);
+        EventBus.on(GameEvents.PlayerDataLoaded, () => {
+            const loadedProgress = playerTaskList.GetProgress();
+
+            this.UpdateLabels(loadedProgress);
+            this.AnimateTo(loadedProgress);
+        });
+    }
+
+    // Reads which pixels make up the ring, and where each one sits around it
+    private LoadRingArt ()
+    {
+        const art = new Image();
+
+        art.addEventListener('load', () => {
+            const width = art.naturalWidth;
+            const height = art.naturalHeight;
+            const readingCanvas = document.createElement('canvas');
+            readingCanvas.width = width;
+            readingCanvas.height = height;
+
+            const readingContext = readingCanvas.getContext('2d', { willReadFrequently: true });
+
+            if (!readingContext)
+            {
+                return;
+            }
+
+            readingContext.drawImage(art, 0, 0);
+
+            const artPixels = readingContext.getImageData(0, 0, width, height).data;
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            this.ringPixels = [];
+
+            for (let y = 0; y < height; y++)
+            {
+                for (let x = 0; x < width; x++)
+                {
+                    const index = y * width + x;
+
+                    if (artPixels[index * 4 + 3] === 0)
+                    {
+                        continue;
+                    }
+
+                    // Measured from the pixel's middle, clockwise from straight up
+                    const offsetX = x + 0.5 - centerX;
+                    const offsetY = y + 0.5 - centerY;
+                    const angle = Math.atan2(offsetX, -offsetY);
+
+                    this.ringPixels.push({
+                        index,
+                        fraction: (angle / (Math.PI * 2) + 1) % 1,
+                        circumference: Math.PI * 2 * Math.hypot(offsetX, offsetY)
+                    });
+                }
+            }
+
+            this.canvasElement.width = width;
+            this.canvasElement.height = height;
+            this.ringImage = new ImageData(width, height);
+            this.Draw();
+        });
+
+        art.src = uiAssets.progressRing;
     }
 
     private HandleTasksChanged (payload: TasksChangedPayload)
@@ -152,24 +219,85 @@ export class ProgressRing
 
     private Draw ()
     {
+        this.percentValueElement.textContent = String(this.shownPercent);
+        this.rootElement.classList.toggle('is-complete', this.shownPercent === 100);
+
+        const context = this.canvasElement.getContext('2d');
+
+        if (!this.ringImage || !context)
+        {
+            return;
+        }
+
+        const pixels = this.ringImage.data;
+        const trackColor = this.GetTrackColor();
+
+        for (const ringPixel of this.ringPixels)
+        {
+            const typeId = this.FindSectionAt(ringPixel);
+            const color = typeId ? ParseColor(taskTypes[typeId].color) : trackColor;
+            const pixelStart = ringPixel.index * 4;
+
+            pixels[pixelStart] = color[0];
+            pixels[pixelStart + 1] = color[1];
+            pixels[pixelStart + 2] = color[2];
+            pixels[pixelStart + 3] = 255;
+        }
+
+        context.putImageData(this.ringImage, 0, 0);
+    }
+
+    // The task type whose section covers this pixel, or null for the track (or the gap between two sections)
+    private FindSectionAt (ringPixel: RingPixel): TaskTypeId | null
+    {
         const visibleSectionCount = taskTypeIds.filter(typeId => this.shownFractions[typeId] > 0.001).length;
         // Gaps only go between sections, so a lone section stays whole
-        const gap = visibleSectionCount > 1 ? ringSettings.sectionGap : 0;
+        const halfGap = visibleSectionCount > 1 ? ringSettings.sectionGapPx / 2 / ringPixel.circumference : 0;
         let sectionStart = 0;
 
         for (const typeId of taskTypeIds)
         {
-            const sectionLength = this.shownFractions[typeId] * ringCircumference;
-            const arc = this.sections.get(typeId)?.arc;
+            const sectionEnd = sectionStart + this.shownFractions[typeId];
 
-            // One dash the length of the section, pushed along the ring to where the section starts
-            arc?.setAttribute('stroke-dasharray', `${Math.max(0, sectionLength - gap)} ${ringCircumference}`);
-            arc?.setAttribute('stroke-dashoffset', String(-(sectionStart + gap / 2)));
-            sectionStart += sectionLength;
+            if (ringPixel.fraction >= sectionStart + halfGap && ringPixel.fraction < sectionEnd - halfGap)
+            {
+                return typeId;
+            }
+
+            sectionStart = sectionEnd;
         }
 
-        this.percentValueElement.textContent = String(this.shownPercent);
-        this.rootElement.classList.toggle('is-complete', this.shownPercent === 100);
+        return null;
+    }
+
+    private GetTrackColor (): Rgb
+    {
+        if (!this.trackColor)
+        {
+            const cssColor = getComputedStyle(this.rootElement).getPropertyValue('--ring-track-color').trim();
+
+            // Only remembered once the CSS has loaded, so an early guess is corrected
+            if (cssColor)
+            {
+                this.trackColor = ParseColor(cssColor);
+            }
+
+            return this.trackColor ?? ParseColor(ringSettings.fallbackTrackColor);
+        }
+
+        return this.trackColor;
+    }
+
+    private UpdateHoverText (event: PointerEvent)
+    {
+        const bounds = this.canvasElement.getBoundingClientRect();
+        const width = this.canvasElement.width;
+        const pixelX = Math.floor((event.clientX - bounds.left) / bounds.width * width);
+        const pixelY = Math.floor((event.clientY - bounds.top) / bounds.height * this.canvasElement.height);
+        const ringPixel = this.ringPixels.find(candidate => candidate.index === pixelY * width + pixelX);
+        const typeId = ringPixel ? this.FindSectionAt(ringPixel) : null;
+
+        this.graphicElement.title = typeId ? this.labelsByType[typeId] : '';
     }
 
     private Pulse ()
@@ -185,12 +313,7 @@ export class ProgressRing
     {
         for (const typeId of taskTypeIds)
         {
-            const tooltip = this.sections.get(typeId)?.tooltip;
-
-            if (tooltip)
-            {
-                tooltip.textContent = `${taskTypes[typeId].label}: ${progress.completedCountByType[typeId]} done`;
-            }
+            this.labelsByType[typeId] = `${taskTypes[typeId].label}: ${progress.completedCountByType[typeId]} done`;
         }
 
         this.graphicElement.setAttribute(
@@ -218,17 +341,22 @@ function Lerp (from: number, to: number, amount: number): number
     return from * (1 - amount) + to * amount;
 }
 
-function CreateSvgElement<TagName extends keyof SVGElementTagNameMap> (
-    tagName: TagName,
-    attributes: Record<string, string | number>
-): SVGElementTagNameMap[TagName]
-{
-    const element = document.createElementNS(svgNamespace, tagName);
+const parsedColors = new Map<string, Rgb>();
 
-    for (const [ name, value ] of Object.entries(attributes))
+// "#5fb86b" (or "#abc") as red, green and blue
+function ParseColor (hexColor: string): Rgb
+{
+    let color = parsedColors.get(hexColor);
+
+    if (!color)
     {
-        element.setAttribute(name, String(value));
+        const digits = hexColor.replace('#', '');
+        const fullDigits = digits.length === 3 ? digits.split('').map(digit => digit + digit).join('') : digits;
+        const value = parseInt(fullDigits, 16) || 0;
+
+        color = [ (value >> 16) & 255, (value >> 8) & 255, value & 255 ];
+        parsedColors.set(hexColor, color);
     }
 
-    return element;
+    return color;
 }

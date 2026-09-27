@@ -1,55 +1,48 @@
+/* The profile art (32x32, colored in by UiAvatar.ts), drawn at a whole multiple of its size in screen pixels so it
+   stays crisp: each size below is rounded to the nearest crisp one (--screen-pixel is set in UiScale.ts) */
 .avatar {
-    --avatar-size: 36px;
+    --avatar-art-step: calc(var(--screen-pixel, 1px) * 32);
+    --avatar-wanted-size: 40px;
+    --avatar-size: max(var(--avatar-art-step), round(nearest, var(--avatar-wanted-size), var(--avatar-art-step)));
 
     position: relative;
-    /* Keeps the picture's blend below limited to the avatar's own background */
-    isolation: isolate;
     display: inline-grid;
     flex-shrink: 0;
     place-items: center;
     width: var(--avatar-size);
     height: var(--avatar-size);
-    background: var(--avatar-color);
-    border: 2px solid #ffffff;
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .avatar.is-small {
-    --avatar-size: 30px;
+    --avatar-wanted-size: 34px;
 }
 
 .avatar.is-large {
-    --avatar-size: 60px;
-    border-width: 3px;
+    --avatar-wanted-size: 66px;
 }
 
 .avatar-image {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    /* The placeholder picture has a light checkerboard baked in: brightening turns it white, and multiply makes white see-through */
-    filter: brightness(1.08);
-    mix-blend-mode: multiply;
+    image-rendering: pixelated;
 }
 
+/* Online dot, a pixel-art circle */
 .avatar-status {
     position: absolute;
     right: -1px;
     bottom: -1px;
-    width: 30%;
-    height: 30%;
-    min-width: 9px;
-    min-height: 9px;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
+    width: 32%;
+    height: 32%;
+    min-width: 10px;
+    min-height: 10px;
 }
 
 .avatar-status.is-online {
-    background: #4cc26a;
+    --pixel-tint: var(--tint-online);
 }
 
 .avatar-status.is-offline {
-    background: #b9b0a3;
+    --pixel-tint: var(--tint-offline);
 }

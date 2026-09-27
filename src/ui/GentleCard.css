@@ -1,0 +1,106 @@
+.gentle-card-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    box-sizing: border-box;
+    /* A soft, warm dim rather than a dark one */
+    background: rgba(58, 50, 38, 0.3);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0s 0.3s;
+}
+
+.gentle-card-overlay.is-open {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s;
+}
+
+.gentle-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(420px, 100%);
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 24px 24px 20px;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: 20px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    transform: translateY(10px) scale(0.97);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gentle-card-overlay.is-open .gentle-card {
+    transform: none;
+}
+
+.gentle-card-title {
+    margin: 0;
+    font-size: var(--ui-text-large);
+}
+
+.gentle-card-text {
+    margin: 0;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    line-height: 1.5;
+}
+
+.gentle-card-body:empty {
+    display: none;
+}
+
+.gentle-card-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+/* Pixel-art pills (the pixel-pill class) */
+.gentle-card-button {
+    --pill-size: 40px;
+
+    min-height: 40px;
+    padding: 8px 18px;
+    background: none;
+    border: none;
+    border-radius: 999px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.12s ease-out;
+}
+
+@media (hover: hover) {
+    .gentle-card-button:hover {
+        transform: translateY(-1px);
+    }
+}
+
+.gentle-card-button:active {
+    transform: scale(0.96);
+}
+
+.gentle-card-button.is-primary {
+    --pixel-tint: var(--tint-accent);
+
+    color: #ffffff;
+}
+
+.gentle-card-button:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+}

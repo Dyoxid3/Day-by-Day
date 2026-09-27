@@ -102,7 +102,8 @@ export class ItemPlacementController
             itemId: placedItem.itemId,
             x: placedItem.x,
             y: placedItem.y,
-            width: placedItem.displayWidth
+            // The base's width, so the cat comes to stand beside the item itself
+            width: placedItem.GetFootprint().width
         };
 
         placedItem.setAlpha(1);

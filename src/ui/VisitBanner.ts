@@ -2,7 +2,7 @@ import { EventBus, GameEvents, type TravelStartedPayload, type VisitStateChanged
 import { onlineSession } from '../online/OnlineSession';
 import './VisitBanner.css';
 
-// How long the "Sailing to…" caption lingers after arriving, while the island fades in
+// How long the "Sailing to..." caption lingers after arriving, while the island fades in
 const captionLingerMs = 900;
 
 // While on a friend's island: a banner saying whose island it is, with a button to sail home.
@@ -18,21 +18,21 @@ export class VisitBanner
     constructor (container: HTMLElement)
     {
         this.bannerElement = document.createElement('div');
-        this.bannerElement.className = 'visit-banner';
+        this.bannerElement.className = 'visit-banner pixel-pill';
 
         this.bannerTextElement = document.createElement('span');
         this.bannerTextElement.className = 'visit-banner-text';
 
         this.homeButton = document.createElement('button');
         this.homeButton.type = 'button';
-        this.homeButton.className = 'visit-banner-home';
-        this.homeButton.textContent = '🏠 Sail home';
+        this.homeButton.className = 'visit-banner-home pixel-pill';
+        this.homeButton.textContent = 'Sail home';
         this.homeButton.addEventListener('click', () => onlineSession.ReturnHome());
 
         this.bannerElement.append(this.bannerTextElement, this.homeButton);
 
         this.captionElement = document.createElement('div');
-        this.captionElement.className = 'travel-caption';
+        this.captionElement.className = 'travel-caption pixel-pill';
         this.captionElement.setAttribute('aria-live', 'polite');
 
         container.append(this.bannerElement, this.captionElement);
@@ -53,8 +53,8 @@ export class VisitBanner
     {
         window.clearTimeout(this.captionTimerId);
         this.captionElement.textContent = payload.destinationUsername
-            ? `⛵ Sailing to ${payload.destinationUsername}'s island…`
-            : '⛵ Sailing home…';
+            ? `Sailing to ${payload.destinationUsername}'s island...`
+            : 'Sailing home...';
         this.captionElement.classList.add('is-visible');
     }
 
@@ -71,7 +71,7 @@ export class VisitBanner
 
             const nameElement = document.createElement('strong');
             nameElement.textContent = payload.hostUsername;
-            this.bannerTextElement.replaceChildren('🏝️ ', prefixElement, nameElement, "'s island");
+            this.bannerTextElement.replaceChildren(prefixElement, nameElement, "'s island");
         }
 
         this.bannerElement.classList.toggle('is-visible', isVisiting);
@@ -84,6 +84,6 @@ export class VisitBanner
     private SetHomeButtonReady (isReady: boolean)
     {
         this.homeButton.disabled = !isReady;
-        this.homeButton.textContent = isReady ? '🏠 Sail home' : '⛵ Sailing…';
+        this.homeButton.textContent = isReady ? 'Sail home' : 'Sailing...';
     }
 }

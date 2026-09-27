@@ -23,27 +23,30 @@
     align-items: center;
     gap: 6px;
     overflow: hidden;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
 
+/* Pixel-art pill (the pixel-pill class) */
 .friend-tag {
+    --pill-size: 22px;
+    --pixel-tint: var(--tint-blue-soft);
+
     flex-shrink: 0;
     padding: 1px 6px;
-    background: #dff1ff;
     border-radius: 999px;
     color: #2d6fa8;
-    font-size: 10.5px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
 }
 
 .friend-status {
     overflow: hidden;
     color: var(--ui-text-muted);
-    font-size: 12px;
+    font-size: var(--ui-text-small);
     white-space: nowrap;
     text-overflow: ellipsis;
 }
@@ -55,23 +58,26 @@
     gap: 5px;
 }
 
+/* Pixel-art pills (the pixel-pill class) */
 .friend-button {
-    padding: 6px 10px;
-    background: var(--ui-background);
-    border: 1.5px solid var(--ui-border);
+    --pill-size: 36px;
+
+    padding: 8px 12px;
+    background: none;
+    border: none;
     border-radius: 999px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 12.5px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     white-space: nowrap;
     cursor: pointer;
-    transition: transform 0.12s ease-out, border-color 0.12s, filter 0.12s;
+    transition: transform 0.12s ease-out, filter 0.12s;
 }
 
-
 .friend-button:hover:not(:disabled) {
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent-soft);
+
     transform: translateY(-1px);
 }
 
@@ -80,13 +86,14 @@
 }
 
 .friend-button.is-primary {
-    background: #4f8fd9;
-    border-color: #4f8fd9;
+    --pixel-tint: var(--tint-blue);
+
     color: #ffffff;
 }
 
 .friend-button.is-primary:hover:not(:disabled) {
-    border-color: #3a78c2;
+    --pixel-tint: var(--tint-blue);
+
     filter: brightness(1.05);
 }
 
@@ -96,6 +103,12 @@
 }
 
 .friend-button.is-primary:disabled {
-    background: #9bbde6;
-    border-color: #9bbde6;
+    --pixel-tint: var(--tint-blue-faded);
+}
+
+.friend-star-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: -3px;
+    object-fit: contain;
 }

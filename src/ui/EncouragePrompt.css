@@ -51,42 +51,13 @@
 
 .encourage-title {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--ui-text-large);
 }
 
 .encourage-subtitle {
     margin: 2px 0 0;
     color: var(--ui-text-muted);
-    font-size: 13px;
-}
-
-.encourage-presets {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.encourage-preset {
-    padding: 6px 11px;
-    background: var(--ui-surface);
-    border: 2px solid var(--ui-border);
-    border-radius: 999px;
-    color: var(--ui-text);
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.12s, border-color 0.12s, transform 0.12s;
-}
-
-.encourage-preset:hover {
-    border-color: #f08fb0;
-    transform: translateY(-1px);
-}
-
-.encourage-preset.is-picked {
-    background: #ffe3ee;
-    border-color: #e86a98;
+    font-size: var(--ui-text-small);
 }
 
 .encourage-input {
@@ -98,7 +69,112 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
+    line-height: 1.35;
+    resize: none;
+}
+
+/* --- Gift: coins, stars and the goal the friend has to reach --- */
+
+.encourage-gift {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 12px 12px;
+    background: var(--ui-surface);
+    border: 2px solid var(--ui-border);
+    border-radius: 12px;
+}
+
+.encourage-gift-title {
+    padding: 0 4px;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+}
+
+.encourage-gift-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--ui-text-small);
+}
+
+.encourage-gift-icon {
+    width: var(--pixel-icon-size-medium);
+    height: var(--pixel-icon-size-medium);
+    object-fit: contain;
+}
+
+/* Same width for each label, so the controls line up */
+.encourage-gift-label {
+    width: 48px;
+    font-weight: 700;
+}
+
+/* Pixel-art circles (the pixel-circle class) */
+.encourage-step-button {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.encourage-step-button:active {
+    transform: scale(0.92);
+}
+
+.encourage-amount-input {
+    width: 58px;
+    padding: 5px 6px;
+    box-sizing: border-box;
+    background: var(--ui-background);
+    border: 2px solid var(--ui-border);
+    border-radius: 8px;
+    color: var(--ui-text);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* No browser arrows on the number boxes; the - and + buttons do that */
+.encourage-amount-input::-webkit-outer-spin-button,
+.encourage-amount-input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+.encourage-amount-input:focus {
+    outline: none;
+    border-color: #e86a98;
+}
+
+.encourage-amount-max {
+    color: var(--ui-text-muted);
+}
+
+.encourage-goal-slider {
+    flex: 1;
+    min-width: 0;
+    accent-color: #e86a98;
+}
+
+.encourage-goal-value {
+    width: 44px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
 }
 
 .encourage-input:focus {
@@ -112,14 +188,14 @@
     background: #fff6df;
     border-radius: 10px;
     color: #8a6415;
-    font-size: 12.5px;
+    font-size: var(--ui-text-small);
     line-height: 1.4;
 }
 
 .encourage-error {
     margin: 0;
     color: var(--ui-danger);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
 }
 
 .encourage-error:empty {
@@ -139,7 +215,7 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
 }

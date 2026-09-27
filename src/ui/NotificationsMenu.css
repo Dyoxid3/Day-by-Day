@@ -39,24 +39,19 @@
 
 .notifications-title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--ui-text-small);
 }
 
 .notifications-close {
     width: 30px;
     height: 30px;
     padding: 0;
-    background: transparent;
+    background: none;
     border: none;
-    border-radius: 50%;
     color: var(--ui-text);
     font-size: 22px;
     line-height: 1;
     cursor: pointer;
-}
-
-.notifications-close:hover {
-    background: rgba(0, 0, 0, 0.06);
 }
 
 .notifications-list {
@@ -90,7 +85,7 @@
     box-shadow: inset 3px 0 0 var(--ui-accent);
 }
 
-/* Small icon on the corner of the sender's picture */
+/* Small icon on the corner of the sender's picture, on a pixel-art circle (the pixel-circle class) */
 .notification-icon {
     position: absolute;
     right: -6px;
@@ -99,7 +94,6 @@
     place-items: center;
     width: 20px;
     height: 20px;
-    background: #ffffff;
     border-radius: 50%;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     font-size: 11px;
@@ -115,14 +109,14 @@
 }
 
 .notification-title {
-    font-size: 13.5px;
+    font-size: var(--ui-text-small);
     line-height: 1.3;
 }
 
 .notification-body .notification-message {
     margin-top: 3px;
     overflow-wrap: anywhere;
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     line-height: 1.35;
 }
@@ -130,12 +124,16 @@
 .notification-body .notification-meta {
     margin-top: 4px;
     color: var(--ui-text-muted);
-    font-size: 12px;
+    font-size: var(--ui-text-small);
 }
 
+/* Pixel-art pill (the pixel-pill class) */
 .notification-boost {
+    --pill-size: 22px;
+    --pixel-tint: var(--tint-gold);
+
+    display: inline-block;
     padding: 1px 6px;
-    background: linear-gradient(135deg, #ffcf4a, #f29d1f);
     border-radius: 999px;
     color: #ffffff;
     font-weight: 800;
@@ -144,7 +142,7 @@
 .notification-body .notification-replied {
     margin-top: 6px;
     color: #3f9a57;
-    font-size: 12.5px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
 }
 
@@ -165,21 +163,25 @@
     gap: 5px;
 }
 
+/* Pixel-art pills (the pixel-pill class) */
 .notification-reply-chip {
-    padding: 4px 9px;
-    background: var(--ui-surface);
-    border: 1.5px solid var(--ui-border);
+    --pill-size: 32px;
+
+    padding: 6px 11px;
+    background: none;
+    border: none;
     border-radius: 999px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 12.5px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
     cursor: pointer;
-    transition: border-color 0.12s, transform 0.12s;
+    transition: transform 0.12s;
 }
 
 .notification-reply-chip:hover:not(:disabled) {
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent-soft);
+
     transform: translateY(-1px);
 }
 
@@ -207,7 +209,7 @@
     border-radius: 8px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 12.5px;
+    font-size: var(--ui-text-small);
 }
 
 .notification-reply-input:focus {
@@ -222,7 +224,7 @@
     border-radius: 8px;
     color: #ffffff;
     font: inherit;
-    font-size: 12.5px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
 }
@@ -239,30 +241,60 @@
 }
 
 .notifications-empty-icon {
-    font-size: 30px;
+    width: var(--pixel-icon-size-large);
+    height: var(--pixel-icon-size-large);
+    object-fit: contain;
 }
 
 .notifications-empty p {
     margin: 0 0 6px;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     line-height: 1.4;
 }
 
+/* Pixel-art pill (the pixel-pill class) */
 .notifications-button {
-    padding: 8px 16px;
-    background: var(--ui-surface);
-    border: 2px solid var(--ui-border);
+    --pill-size: 40px;
+
+    padding: 10px 18px;
+    background: none;
+    border: none;
     border-radius: 999px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
 }
 
 .notifications-button.is-primary {
-    background: var(--ui-accent);
-    border-color: var(--ui-accent);
+    --pixel-tint: var(--tint-accent);
+
+    color: #ffffff;
+}
+
+.notification-icon-image {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+/* What an encouragement's gift needs (or gave), and the detail line of other notifications */
+.notification-body .notification-gift {
+    margin-top: 3px;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    line-height: 1.35;
+}
+
+.notification-body .notification-gift.is-earned {
+    color: #3f9a57;
+}
+
+/* The follow-up that matters most, like encouraging a friend having a hard day */
+.notification-reply-chip.is-primary {
+    --pixel-tint: var(--tint-accent);
+
     color: #ffffff;
 }

@@ -52,6 +52,17 @@ export class PlacedItemsLayer
         this.items.push(item);
     }
 
+    // Stops showing an item (the caller destroys it once any animation is done)
+    Remove (item: PlacedItem)
+    {
+        this.items = this.items.filter(shownItem => shownItem !== item);
+    }
+
+    GetItems (): readonly PlacedItem[]
+    {
+        return this.items;
+    }
+
     GetFootprints (): Phaser.Geom.Rectangle[]
     {
         return this.items.map(item => item.GetFootprint());

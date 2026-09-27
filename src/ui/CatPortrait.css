@@ -1,0 +1,25 @@
+/* The cat's 48x48 layers, drawn at a whole multiple of their size in screen pixels so they stay crisp
+   (--screen-pixel is set in UiScale.ts) */
+.cat-portrait {
+    --cat-portrait-step: calc(var(--screen-pixel, 1px) * 48);
+    --cat-portrait-size: max(var(--cat-portrait-step), round(nearest, 96px, var(--cat-portrait-step)));
+
+    position: relative;
+    flex-shrink: 0;
+    width: var(--cat-portrait-size);
+    height: var(--cat-portrait-size);
+}
+
+.cat-portrait-layer {
+    position: absolute;
+    inset: 0;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    image-rendering: pixelated;
+}
+
+/* The body sheet has 4 frames per row and 2 rows; the first frame is the cat standing, facing the camera */
+.cat-portrait-layer.is-body {
+    background-size: 400% 200%;
+    background-position: 0 0;
+}

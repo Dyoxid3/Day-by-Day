@@ -49,24 +49,19 @@
 
 .profile-title {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--ui-text-large);
 }
 
 .profile-close {
     width: 32px;
     height: 32px;
     padding: 0;
-    background: transparent;
+    background: none;
     border: none;
-    border-radius: 50%;
     color: var(--ui-text);
     font-size: 24px;
     line-height: 1;
     cursor: pointer;
-}
-
-.profile-close:hover {
-    background: rgba(0, 0, 0, 0.06);
 }
 
 .profile-body {
@@ -87,7 +82,7 @@
     background: #fdecea;
     border-radius: 10px;
     color: var(--ui-danger);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
 }
 
 /* --- Account --- */
@@ -104,7 +99,7 @@
 
 .profile-name {
     overflow: hidden;
-    font-size: 20px;
+    font-size: var(--ui-text-large);
     font-weight: 800;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -112,7 +107,7 @@
 
 .profile-subtitle {
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
 }
 
 .profile-stats {
@@ -138,13 +133,13 @@
 }
 
 .profile-stat-value {
-    font-size: 17px;
+    font-size: var(--ui-text-large);
     font-weight: 800;
 }
 
 .profile-stat-label {
     color: var(--ui-text-muted);
-    font-size: 11.5px;
+    font-size: var(--ui-text-small);
 }
 
 .profile-logout {
@@ -152,102 +147,39 @@
     margin-left: auto;
 }
 
-.profile-pitch {
-    margin: 0 0 12px;
-    color: var(--ui-text-muted);
-    font-size: 13.5px;
-    line-height: 1.45;
-}
-
-/* --- Sign up / log in --- */
-
-.auth-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 3px;
-    background: #efe6d8;
-    border-radius: 12px;
-}
-
-.auth-tab {
-    padding: 7px;
-    background: transparent;
-    border: none;
-    border-radius: 9px;
-    color: var(--ui-text-muted);
-    font: inherit;
-    font-size: 13.5px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color 0.15s, color 0.15s;
-}
-
-.auth-tab.is-selected {
-    background: var(--ui-surface);
-    color: var(--ui-text);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 12px;
-}
-
-.auth-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    color: var(--ui-text-muted);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.auth-submit {
-    margin-top: 4px;
-    padding: 10px;
-    font-size: 14px;
-}
-
-.auth-error {
-    min-height: 1em;
-    margin: 0;
-    color: var(--ui-danger);
-    font-size: 13px;
-}
-
-.auth-error:empty {
-    display: none;
-}
-
-.auth-hint {
-    margin: 0;
-    color: var(--ui-text-muted);
-    font-size: 12px;
-}
-
-.auth-hint:empty {
-    display: none;
-}
-
-/* --- Friends --- */
-
-.profile-friends {
+/* Logging out sits at the very bottom, below everything else */
+.profile-footer:not(:empty) {
     margin-top: 18px;
     padding-top: 14px;
     border-top: 1px solid var(--ui-border);
 }
 
+.profile-pitch {
+    margin: 0 0 12px;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    line-height: 1.45;
+}
+
+/* --- Friends --- */
+
+.profile-friends {
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid var(--ui-border);
+}
+
+/* Below the friends list */
+.profile-add-friend {
+    margin-top: 14px;
+}
+
 .profile-section-title {
     margin: 0 0 8px;
     color: var(--ui-text-muted);
-    font-size: 12px;
+    font-size: var(--ui-text-small);
     font-weight: 800;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    text-transform: lowercase;
 }
 
 .add-friend-form {
@@ -259,7 +191,7 @@
     min-height: 18px;
     margin: 6px 0 12px;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
 }
 
 .add-friend-status.is-success {
@@ -278,7 +210,7 @@
     border: 1px dashed var(--ui-border);
     border-radius: 12px;
     color: var(--ui-text-muted);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     line-height: 1.45;
 }
 
@@ -294,9 +226,7 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 14px;
-    letter-spacing: normal;
-    text-transform: none;
+    font-size: var(--ui-text-small);
 }
 
 .profile-input:focus {
@@ -311,7 +241,7 @@
     border-radius: 10px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 13.5px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
     transition: filter 0.12s, transform 0.12s;
@@ -341,4 +271,128 @@
     border-color: transparent;
     color: var(--ui-text-muted);
     font-weight: 600;
+}
+
+.profile-stat-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.profile-stat-icon {
+    width: var(--pixel-icon-size-medium);
+    height: var(--pixel-icon-size-medium);
+    object-fit: contain;
+}
+
+/* --- Letters and gentle helpers --- */
+
+.profile-section {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--ui-border);
+}
+
+.profile-section-note {
+    margin: 0 0 10px;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    line-height: 1.45;
+}
+
+.profile-section-note.is-warning {
+    color: var(--ui-danger);
+}
+
+.profile-section-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.profile-helper-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.profile-helper-switch input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--ui-accent);
+    cursor: pointer;
+}
+
+.profile-helper-switch input:disabled {
+    cursor: default;
+}
+
+/* The switch, then a "?" button whose tooltip explains what the helpers send to Google */
+.profile-helper-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+/* A pixel-art circle (the pixel-circle class) */
+.profile-info-button {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    color: var(--ui-text-muted);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    font-weight: 800;
+    cursor: help;
+}
+
+/* Hangs below the row, across the section's width, so the panel's edges never cut it off */
+.profile-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    z-index: 1;
+    padding: 10px 12px;
+    background: var(--ui-text);
+    border-radius: 10px;
+    box-shadow: var(--ui-shadow);
+    color: #ffffff;
+    font-size: var(--ui-text-small);
+    line-height: 1.45;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity 0.15s, transform 0.15s, visibility 0s 0.15s;
+}
+
+.profile-info-button:hover + .profile-tooltip,
+.profile-info-button:focus-visible + .profile-tooltip,
+.profile-info-button:active + .profile-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition: opacity 0.15s, transform 0.15s;
+}
+
+/* Touch screens: a tap focuses the button, which keeps the tooltip open until tapping elsewhere */
+@media (hover: none) {
+    .profile-info-button:focus + .profile-tooltip {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition: opacity 0.15s, transform 0.15s;
+    }
 }

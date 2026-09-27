@@ -45,12 +45,32 @@ export function GetImportanceLevel (importance: number): TaskImportanceLevel
     return taskImportanceLevels.find(importanceLevel => importanceLevel.level === importance) ?? taskImportanceLevels[0];
 }
 
+// How hard a task feels to the player, offered in this order in the new task menu. The gentle helper uses it to decide
+// when to suggest smaller steps (see taskSplitSettings).
+export const taskDifficultyLevels = [
+    { level: 1, label: 'Easy', helperWord: 'easy' },
+    { level: 2, label: 'Medium', helperWord: 'medium' },
+    { level: 3, label: 'Hard', helperWord: 'hard' }
+];
+
+export const defaultTaskDifficulty = 2;
+
+// Smaller steps the helper suggests are meant to be easy
+export const smallerStepDifficulty = 1;
+
+export function GetDifficultyLevel (difficulty: number)
+{
+    return taskDifficultyLevels.find(difficultyLevel => difficultyLevel.level === difficulty) ?? taskDifficultyLevels[1];
+}
+
 export interface NewTaskDetails
 {
     name: string;
     typeId: TaskTypeId;
     // A level from taskImportanceLevels
     importance: number;
+    // A level from taskDifficultyLevels: how hard it feels to the player
+    difficulty: number;
     // Minutes after midnight, or null when the task has no set time
     scheduledMinutes: number | null;
 }
@@ -61,8 +81,12 @@ export interface Task extends NewTaskDetails
     isCompleted: boolean;
     // Set the first time the task is checked off; unchecking and checking again doesn't earn coins twice
     hasEarnedCoins: boolean;
+    // Late in the day, less important tasks "can wait": they stop counting toward the day's progress, so finishing
+    // the rest completes the day. Checking one off anyway makes it count again.
+    isExempt: boolean;
 }
 
+// Tasks that can wait (isExempt) aren't counted in any of these
 export interface DailyProgress
 {
     totalCount: number;

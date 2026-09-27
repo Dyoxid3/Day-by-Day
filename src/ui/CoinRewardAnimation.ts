@@ -1,12 +1,13 @@
 import { EventBus, GameEvents, type CoinRewardRequestedPayload } from '../game/EventBus';
+import { GetUiZoom } from './UiScale';
 import { playerWallet } from '../game/state/Wallet';
 import { uiAssets } from './UiAssets';
 import { FormatBoostMultiplier } from './UiFormat';
 import './CoinRewardAnimation.css';
 
 const coinAnimationSettings = {
-    // Size when leaving the character
-    coinSizePx: 34,
+    // Size when leaving the character: the pixel-art coin's own size, so it starts out crisp
+    coinSizePx: 32,
     // Size when reaching the counter; roughly matches the counter's coin icon
     endSizePx: 22,
     // Bigger rewards split their value across this many coins at most
@@ -62,14 +63,16 @@ export class CoinRewardAnimation
         const settings = coinAnimationSettings;
         const containerBounds = this.container.getBoundingClientRect();
         const targetBounds = this.targetElement.getBoundingClientRect();
+        // Page positions are zoomed, left/top inside the UI are not
+        const uiZoom = GetUiZoom();
 
         const source: Point = {
-            x: payload.clientX - containerBounds.left,
-            y: payload.clientY - containerBounds.top
+            x: (payload.clientX - containerBounds.left) / uiZoom,
+            y: (payload.clientY - containerBounds.top) / uiZoom
         };
         const counter: Point = {
-            x: targetBounds.left + targetBounds.width / 2 - containerBounds.left,
-            y: targetBounds.top + targetBounds.height / 2 - containerBounds.top
+            x: (targetBounds.left + targetBounds.width / 2 - containerBounds.left) / uiZoom,
+            y: (targetBounds.top + targetBounds.height / 2 - containerBounds.top) / uiZoom
         };
 
         const coinCount = Math.min(payload.amount, settings.maxVisibleCoins);
@@ -98,7 +101,7 @@ export class CoinRewardAnimation
         if (payload.multiplier > 1)
         {
             const boostElement = document.createElement('span');
-            boostElement.className = 'coin-reward-boost';
+            boostElement.className = 'coin-reward-boost pixel-pill';
             boostElement.textContent = `${FormatBoostMultiplier((payload.multiplier - 1) * 100)} boost`;
             label.append(boostElement);
         }

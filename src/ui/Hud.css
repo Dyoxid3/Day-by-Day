@@ -1,26 +1,44 @@
+/* Shared with UI that has to stay clear of the HUD (the shop leaves room above its items, and the visit banner
+   sits beside the bell on phones), so they follow along when the HUD is resized */
+:root {
+    /* The shop button's size; everything else in the HUD is sized from it, so this one line resizes the HUD.
+       The whole UI already grows on bigger screens (UiScale.ts), so this is its size at 1x. */
+    --hud-button-size: 64px;
+    /* The HUD's 32x32 pixel-art icons are drawn at whole multiples of their size in screen pixels, so every art
+       pixel is the same whole number of screen pixels (--screen-pixel is set in UiScale.ts) */
+    --hud-icon-step: calc(var(--screen-pixel, 1px) * 32);
+    /* Space between the HUD and the screen's top and left edges */
+    --hud-edge-gap: 12px;
+    /* Space between the HUD's rows */
+    --hud-row-gap: 10px;
+}
+
 .hud {
-    --shop-button-size: 56px;
+    --shop-button-size: var(--hud-button-size);
     /* The bell */
-    --small-button-size: 46px;
-    /* The streak flame */
-    --streak-size: 50px;
-    --counter-height: 30px;
-    --counter-icon-size: 22px;
+    --small-button-size: calc(var(--shop-button-size) * 0.82);
+    /* The coin and star counters */
+    --counter-height: calc(var(--shop-button-size) * 0.62);
+    --counter-icon-size: calc(var(--counter-height) * 0.78);
+    /* The shop picture inside its circle (the bell's is set in .hud-round.is-small) */
+    --round-icon-size: calc(var(--shop-button-size) * 0.62);
+    /* The coin and star counts. The pixel font is crisp at multiples of 8px, so this snaps down to one
+       (16px on small screens, 24px on big ones). */
+    --hud-text-size: round(down, calc(var(--shop-button-size) * 0.34), 8px);
 
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: var(--hud-edge-gap);
+    left: var(--hud-edge-gap);
     z-index: 3;
     display: grid;
     /* Rearrange the HUD here: each name is one control, "." is an empty cell */
     grid-template-areas:
-        "shop   coins"
-        "bell   ."
-        "streak .";
-    grid-template-columns: var(--shop-button-size) auto;
+        "shop   coins   stars"
+        "bell   .       .";
+    grid-template-columns: var(--shop-button-size) auto auto;
     align-items: center;
     justify-items: center;
-    gap: 10px 8px;
+    gap: var(--hud-row-gap) 8px;
     color: var(--ui-text);
     font-family: var(--ui-font);
     /* Only the controls themselves block clicks to the game, not the gaps between them */
@@ -41,15 +59,16 @@
     justify-self: start;
 }
 
+.hud-star-counter {
+    grid-area: stars;
+    justify-self: start;
+}
+
 .hud-bell-button {
     grid-area: bell;
 }
 
-.hud-streak {
-    grid-area: streak;
-}
-
-/* Circular buttons */
+/* Circular buttons, drawn with the pixel-art circle (the pixel-circle class) */
 .hud-round {
     position: relative;
     display: grid;
@@ -58,14 +77,16 @@
     height: var(--shop-button-size);
     padding: 0;
     box-sizing: border-box;
-    background: var(--ui-background);
-    border: 2px solid var(--ui-border);
+    background: none;
+    border: none;
     border-radius: 50%;
     box-shadow: var(--ui-shadow);
     cursor: pointer;
 }
 
 .hud-round.is-small {
+    --round-icon-size: calc(var(--small-button-size) * 0.7);
+
     width: var(--small-button-size);
     height: var(--small-button-size);
 }
@@ -82,9 +103,10 @@
 }
 
 .hud-round-icon {
-    width: 60%;
-    height: 60%;
+    width: max(var(--hud-icon-step), round(nearest, var(--round-icon-size), var(--hud-icon-step)));
+    height: max(var(--hud-icon-step), round(nearest, var(--round-icon-size), var(--hud-icon-step)));
     object-fit: contain;
+    image-rendering: pixelated;
 }
 
 /* The bell swings from its top */
@@ -92,55 +114,55 @@
     transform-origin: 50% 12%;
 }
 
-/* Unread count on the bell */
+/* Unread count on the bell: the number sits inside the red dot of notif.png, which is 32x32 with a 14px dot in
+   the middle. --badge-size is how big the whole picture is drawn (64px = twice its size, a 28px dot), and
+   --badge-inset is where the dot's middle sits, measured in and down from the bell's top-right corner. */
 .hud-badge {
+    --badge-size: 64px;
+    --badge-inset-x: 2px;
+    --badge-inset-y: 6px;
+
     position: absolute;
-    top: -4px;
-    right: -6px;
+    top: calc(var(--badge-inset-y) - var(--badge-size) / 2);
+    right: calc(var(--badge-inset-x) - var(--badge-size) / 2);
     display: none;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 5px;
-    box-sizing: border-box;
-    background: #e5484d;
-    border: 2px solid #ffffff;
-    border-radius: 10px;
+    place-items: center;
+    width: var(--badge-size);
+    height: var(--badge-size);
+    background: var(--pixel-notification-art) center / 100% 100% no-repeat;
+    image-rendering: pixelated;
     color: #ffffff;
-    font-size: 11px;
-    font-weight: 800;
-    line-height: 16px;
-    text-align: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-size: var(--ui-text-small);
+    font-variant-numeric: tabular-nums;
+    /* The picture is mostly see-through, so it mustn't block clicks on whatever is beside the bell */
+    pointer-events: none;
 }
 
 .hud-bell-button.has-unread .hud-badge {
-    display: block;
+    display: grid;
 }
 
-.hud-bell-button.has-unread {
-    border-color: #f3b0b2;
-}
-
-/* Pill-shaped number display beside a button */
+/* Pill-shaped number display beside a button, drawn with the pixel-art pill (the pixel-pill class) */
 .hud-counter {
+    --pill-size: var(--counter-height);
+
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: calc(var(--counter-height) * 0.15);
     height: var(--counter-height);
-    padding: 0 11px 0 4px;
+    padding: 0 calc(var(--counter-height) * 0.4) 0 calc(var(--counter-height) * 0.14);
     box-sizing: border-box;
-    background: var(--ui-background);
-    border: 2px solid var(--ui-border);
     border-radius: calc(var(--counter-height) / 2);
     box-shadow: var(--ui-shadow);
-    font-size: 15px;
+    font-size: var(--hud-text-size);
     font-weight: 700;
 }
 
 .hud-counter-icon {
-    width: var(--counter-icon-size);
-    height: var(--counter-icon-size);
+    width: max(var(--hud-icon-step), round(nearest, var(--counter-icon-size), var(--hud-icon-step)));
+    height: max(var(--hud-icon-step), round(nearest, var(--counter-icon-size), var(--hud-icon-step)));
     object-fit: contain;
+    image-rendering: pixelated;
 }
 
 .hud-counter-value {
@@ -149,84 +171,35 @@
 
 /* Coin boost from friends, e.g. "×1.2", only shown while one is active */
 .hud-boost-chip {
+    --pill-size: 22px;
+    --pixel-tint: var(--tint-gold);
+
     display: none;
-    margin-right: -6px;
+    margin-right: -8px;
     padding: 1px 7px;
-    background: linear-gradient(135deg, #ffcf4a, #f29d1f);
-    border-radius: 999px;
     color: #ffffff;
-    font-size: 12px;
+    font-size: var(--ui-text-small);
     font-weight: 800;
     text-shadow: 0 1px 1px rgba(150, 80, 0, 0.45);
 }
 
 .hud-coin-counter.has-boost {
-    border-color: #f2c14e;
+    --pixel-tint: var(--tint-gold-soft);
 }
 
 .hud-coin-counter.has-boost .hud-boost-chip {
     display: inline-block;
 }
 
-/* --- Streak flame --- */
+/* --- Stars --- */
 
-.hud-streak {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: var(--streak-size);
-    height: var(--streak-size);
-    cursor: default;
-}
-
-.hud-streak-fire {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)) saturate(0.85);
-    transform-origin: 50% 90%;
-    animation: hud-flame-flicker 1.6s ease-in-out infinite alternate;
-}
-
-/* Brighter once today counts toward the streak */
-.hud-streak.is-lit .hud-streak-fire {
-    filter: drop-shadow(0 0 6px rgba(255, 170, 60, 0.85)) saturate(1.15);
-    animation-duration: 0.9s;
-}
-
-@keyframes hud-flame-flicker {
-    0% { transform: scale(1, 1) rotate(-1deg); }
-    50% { transform: scale(0.97, 1.04) rotate(1deg); }
-    100% { transform: scale(1.02, 0.98) rotate(-0.5deg); }
-}
-
-/* The number sits on the flame's lower, brighter part */
-.hud-streak-count {
-    position: absolute;
-    top: 58%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: 900;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.5px;
-    pointer-events: none;
-    text-shadow:
-        0 0 2px #a8380e,
-        1px 1px 0 #a8380e,
-        -1px 1px 0 #a8380e,
-        1px -1px 0 #a8380e,
-        -1px -1px 0 #a8380e,
-        0 2px 3px rgba(0, 0, 0, 0.35);
-}
-
-.hud-streak-plus {
+/* "+1" rising from the star counter when a star is earned */
+.hud-star-plus {
     position: absolute;
     top: -6px;
     left: 50%;
-    color: #ff8a1f;
-    font-size: 15px;
+    color: #e89a12;
+    font-size: var(--ui-text-small);
     font-weight: 900;
     pointer-events: none;
     text-shadow: 0 1px 0 #ffffff, 0 0 4px #ffffff;
@@ -242,16 +215,17 @@
 }
 
 .placement-hint {
+    --pill-size: 32px;
+    --pixel-tint: var(--tint-dark);
+
     position: absolute;
     top: 16px;
     left: 50%;
     z-index: 3;
     padding: 6px 14px;
-    background: rgba(58, 50, 38, 0.85);
-    border-radius: 999px;
     color: #ffffff;
     font-family: var(--ui-font);
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     white-space: nowrap;
     pointer-events: none;
     opacity: 0;
@@ -265,15 +239,16 @@
 }
 
 .placement-hint-store {
+    --pill-size: 30px;
+
     display: none;
     margin-left: 10px;
     padding: 5px 12px;
-    background: #ffffff;
+    background: none;
     border: none;
-    border-radius: 999px;
     color: var(--ui-text);
     font: inherit;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 700;
     cursor: pointer;
 }
@@ -281,6 +256,8 @@
 /* Touch screens: the hint gets a button to put the item away (there's no Esc key or right-click) */
 @media (pointer: coarse) {
     .placement-hint {
+        --pill-size: 42px;
+
         display: flex;
         align-items: center;
         padding: 6px 6px 6px 14px;

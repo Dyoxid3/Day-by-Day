@@ -2,9 +2,13 @@ import { EventBus, GameEvents, type ItemPurchasedPayload, type PlacementPayload,
 import { shopCatalog, type ShopItem } from '../game/data/ShopCatalog';
 import { playerWallet } from '../game/state/Wallet';
 import { playerInventory } from '../game/state/Inventory';
+import { playerStars } from '../game/state/Stars';
+import { shopUnlocks } from '../game/state/ShopUnlocks';
+import { RequestToast } from '../online/OnlineSession';
 import { PurchasePrompt, type PurchaseChoice } from './PurchasePrompt';
 import { GetAssetUrl, uiAssets } from './UiAssets';
 import { ShakeElement } from './UiAnimations';
+import { Pluralize } from './UiFormat';
 import './ShopPanel.css';
 
 const panelId = 'shop-panel';
@@ -33,9 +37,9 @@ export class ShopPanel
         titleElement.textContent = 'Shop';
 
         const closeButton = document.createElement('button');
-        closeButton.className = 'shop-close-button';
+        closeButton.className = 'shop-close-button pixel-circle is-shape-on-hover';
         closeButton.type = 'button';
-        closeButton.textContent = '×';
+        closeButton.textContent = 'x';
         closeButton.setAttribute('aria-label', 'Close shop');
         closeButton.addEventListener('click', () => this.SetOpen(false));
 
@@ -61,6 +65,9 @@ export class ShopPanel
 
         EventBus.on(GameEvents.UiPanelToggled, this.HandleUiPanelToggled, this);
         EventBus.on(GameEvents.CoinsChanged, this.RefreshAffordability, this);
+        EventBus.on(GameEvents.StarsChanged, this.RefreshAffordability, this);
+        EventBus.on(GameEvents.ItemUnlocked, this.RefreshAffordability, this);
+        EventBus.on(GameEvents.PlayerDataLoaded, this.RefreshAffordability, this);
         // Items can only be placed on your own island, so the shop closes when you set sail
         EventBus.on(GameEvents.TravelStarted, () => this.SetOpen(false));
         window.addEventListener('resize', () => this.HandleWindowResize());
@@ -96,7 +103,7 @@ export class ShopPanel
             isOpen: this.isOpen,
             coveredEdge: 'left',
             // Measured rather than assumed, since the panel has a minimum width on small screens
-            coveredFraction: this.panelElement.offsetWidth / this.container.clientWidth
+            coveredFraction: this.panelElement.getBoundingClientRect().width / this.container.getBoundingClientRect().width
         };
 
         EventBus.emit(GameEvents.UiPanelToggled, payload);
@@ -128,13 +135,32 @@ export class ShopPanel
         priceText.textContent = String(item.price);
         priceElement.append(coinIcon, priceText);
 
-        card.append(imageElement, nameElement, priceElement);
+        // Shown instead of the price until the item unlocks
+        const lockElement = document.createElement('span');
+        lockElement.className = 'shop-item-lock';
+        const starIcon = document.createElement('img');
+        starIcon.src = uiAssets.star;
+        starIcon.alt = '';
+        const lockText = document.createElement('span');
+        lockText.textContent = `Unlocks at ${Pluralize(item.unlockStars, 'star')}`;
+        lockElement.append(starIcon, lockText);
+
+        card.append(imageElement, nameElement, priceElement, lockElement);
 
         return card;
     }
 
     private HandleItemPressed (item: ShopItem, card: HTMLButtonElement)
     {
+        if (!shopUnlocks.IsUnlocked(item))
+        {
+            const starsToGo = item.unlockStars - playerStars.GetLifetimeStars();
+
+            ShakeElement(card);
+            RequestToast(`${item.name} isn't unlocked yet`, `Earn ${Pluralize(starsToGo, 'more star', 'more stars')} to unlock it. The first one is free.`, 'info', false, 'star');
+            return;
+        }
+
         if (!playerWallet.CanAfford(item.price))
         {
             ShakeElement(card);
@@ -171,11 +197,15 @@ export class ShopPanel
         EventBus.emit(GameEvents.PlacementRequested, payload);
     }
 
+    // Marks items the player can't afford yet, and ones still locked until they earn more stars
     private RefreshAffordability ()
     {
         for (const item of shopCatalog)
         {
-            this.itemCards.get(item.id)?.classList.toggle('is-unaffordable', !playerWallet.CanAfford(item.price));
+            const card = this.itemCards.get(item.id);
+
+            card?.classList.toggle('is-unaffordable', !playerWallet.CanAfford(item.price));
+            card?.classList.toggle('is-locked', !shopUnlocks.IsUnlocked(item));
         }
     }
 

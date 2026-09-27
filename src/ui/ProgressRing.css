@@ -1,10 +1,12 @@
 .progress-ring {
     --ring-track-color: #efe4d3;
-    /* The ring grows with the panel's height, staying between these sizes */
+    /* The ring grows with the panel's height, staying near these sizes */
     --ring-min-size: 110px;
     --ring-max-size: 230px;
     /* Height kept free for the heading above the ring */
     --ring-heading-space: 36px;
+    /* Pixels across the ring art (progressring.png); it stays crisp at whole multiples of this in screen pixels */
+    --ring-art-size: 48;
 
     display: flex;
     flex-direction: column;
@@ -13,36 +15,50 @@
 }
 
 .progress-ring-graphic {
+    --ring-art-step: calc(var(--screen-pixel, 1px) * var(--ring-art-size));
     /* 100cqh is the bottom panel's content height */
-    width: clamp(var(--ring-min-size), calc(100cqh - var(--ring-heading-space)), var(--ring-max-size));
-    height: auto;
+    --ring-wanted-size: clamp(var(--ring-min-size), calc(100cqh - var(--ring-heading-space)), var(--ring-max-size));
+
+    position: relative;
+    /* Rounded down to a crisp size (--screen-pixel is set in UiScale.ts), so it never grows past the space it has */
+    width: max(var(--ring-art-step), round(down, var(--ring-wanted-size), var(--ring-art-step)));
     aspect-ratio: 1;
-    overflow: visible;
+    flex-shrink: 0;
+    /* Centered up and down in the space below the heading (the rounding leaves some spare) */
+    margin-block: auto;
+    /* The percentage's size follows the ring's (cqw below) */
+    container-type: inline-size;
     transition: filter 0.4s;
 }
 
-.progress-ring-track,
-.progress-ring-section {
-    fill: none;
+.progress-ring-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
 }
 
-.progress-ring-track {
-    stroke: var(--ring-track-color);
-}
-
-/* Sizes here are in the ring's own units, so the text scales with the ring */
+/* In the ring's hole. The pixel font is crisp at multiples of 8px, so its size steps with the ring's. */
 .progress-ring-percent {
-    fill: var(--ui-text);
-    font-family: var(--ui-font);
-    font-size: 28px;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    color: var(--ui-text);
+    font-size: max(16px, round(down, 21cqw, 8px));
     font-weight: 800;
     font-variant-numeric: tabular-nums;
-    text-anchor: middle;
+    line-height: 1;
+    pointer-events: none;
+    /* The pixel font has more blank space on the left of each letter than the right; this re-centers the number */
+    translate: -0.125em 0;
 }
 
 .progress-ring-percent-sign {
-    fill: var(--ui-text-muted);
-    font-size: 15px;
+    color: var(--ui-text-muted);
+    font-size: max(16px, round(down, 10cqw, 8px));
     font-weight: 700;
 }
 

@@ -1,0 +1,78 @@
+/* Signing up or logging in (see AuthForm.ts), in the profile and in the card that opens when the game starts */
+
+/* Left-aligned wherever it is, including inside the centered log-in card */
+.auth {
+    text-align: left;
+}
+
+.auth-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    background: #efe6d8;
+    border-radius: 12px;
+}
+
+.auth-tab {
+    padding: 7px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--ui-text-muted);
+    font: inherit;
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.auth-tab.is-selected {
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    font-weight: 700;
+    text-transform: lowercase;
+}
+
+.auth-submit {
+    margin-top: 4px;
+    padding: 10px;
+    font-size: var(--ui-text-small);
+}
+
+.auth-error {
+    min-height: 1em;
+    margin: 0;
+    color: var(--ui-danger);
+    font-size: var(--ui-text-small);
+}
+
+.auth-error:empty {
+    display: none;
+}
+
+.auth-hint {
+    margin: 0;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+}
+
+.auth-hint:empty {
+    display: none;
+}
+

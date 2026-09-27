@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { EventBus, GameEvents } from '../EventBus';
 import { Boat } from '../entities/Boat';
 import { WanderingCat } from '../entities/WanderingCat';
 import type { Mooring } from '../data/IslandSettings';
@@ -46,6 +47,8 @@ export class IslandTravel
             return;
         }
 
+        // Only now is the boat actually moving off (not just being walked or hopped toward)
+        EventBus.emit(GameEvents.BoatSetSail);
         await boat.SailTo(this.GetOffscreenX(mooring.seaSide), boat.y, [ cat ]);
     }
 

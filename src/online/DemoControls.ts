@@ -1,12 +1,13 @@
 import { onlineSession } from './OnlineSession';
 
-// Dev-only keys for showing the online features on one screen. They need Mochi or Pixel added as a friend,
-// with nobody logged in as them (the server's demoFriends setting controls this).
+// Dev-only keys for showing the online features on one screen. They need you logged in, and nobody logged in as Sam
+// (the server's demoFriends setting controls this). If Sam isn't your friend yet, he befriends you.
+// Sam leaving a lantern (N) and encouraging you (M) are in the debug menu, along with a button for the visit.
 const demoKeys = {
-    // A demo friend sends you encouragement (and a coin boost)
-    encourage: 'e',
-    // A demo friend sails over and wanders your island for a while, dropping coins
-    visit: 'v'
+    // Sam sails over and wanders your island for a while, dropping a few coins
+    visit: 'v',
+    // A demo friend lets you know they're having a tough day, so you can encourage them
+    lowDay: 't'
 };
 
 export function RegisterDemoControls ()
@@ -22,13 +23,13 @@ export function RegisterDemoControls ()
 
         const key = event.key.toLowerCase();
 
-        if (key === demoKeys.encourage)
-        {
-            onlineSession.RunDemoFriendAction('encourage');
-        }
-        else if (key === demoKeys.visit)
+        if (key === demoKeys.visit)
         {
             onlineSession.RunDemoFriendAction('visit');
+        }
+        else if (key === demoKeys.lowDay)
+        {
+            onlineSession.RunDemoFriendAction('struggle');
         }
     });
 }

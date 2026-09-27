@@ -1,8 +1,8 @@
 .shop-panel {
     --shop-width: 33.333%;
     --shop-min-width: 280px;
-    /* Leaves room for the shop button and coin counter in the top-left corner */
-    --shop-top-space: 80px;
+    /* Leaves room for the shop button and coin counter in the top-left corner (sized in Hud.css), plus a gap */
+    --shop-top-space: calc(var(--hud-edge-gap) + var(--hud-button-size) + 12px);
     --slide-duration: 0.4s;
 
     position: absolute;
@@ -41,24 +41,19 @@
 
 .shop-title {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--ui-text-large);
 }
 
 .shop-close-button {
     width: 32px;
     height: 32px;
     padding: 0;
-    background: transparent;
+    background: none;
     border: none;
-    border-radius: 50%;
     color: var(--ui-text);
     font-size: 24px;
     line-height: 1;
     cursor: pointer;
-}
-
-.shop-close-button:hover {
-    background: rgba(0, 0, 0, 0.06);
 }
 
 .shop-item-grid {
@@ -120,7 +115,7 @@
 }
 
 .shop-item-name {
-    font-size: 14px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
 }
 
@@ -128,7 +123,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 13px;
+    font-size: var(--ui-text-small);
     font-weight: 600;
 }
 
@@ -140,4 +135,34 @@
 
 .shop-item-card.is-unaffordable .shop-item-price {
     color: var(--ui-danger);
+}
+
+/* --- Items that unlock with stars --- */
+
+.shop-item-lock {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    color: var(--ui-text-muted);
+    font-size: var(--ui-text-small);
+    font-weight: 600;
+}
+
+.shop-item-lock img {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.shop-item-card.is-locked .shop-item-lock {
+    display: flex;
+}
+
+.shop-item-card.is-locked .shop-item-price {
+    display: none;
+}
+
+.shop-item-card.is-locked .shop-item-image {
+    filter: grayscale(1) brightness(1.1);
+    opacity: 0.5;
 }
