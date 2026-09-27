@@ -30,40 +30,39 @@ export function KeepCanvasAtScreenResolution (game: Game, container: HTMLElement
 {
     let appliedPixelRatio = 0;
 
-    // The ratio comes from this one measurement (screen pixels over CSS pixels) rather than window.devicePixelRatio,
-    // so the canvas always ends up exactly the container's size. The two can disagree: Firefox's mobile emulation
-    // gives the emulated phone's ratio for one and the monitor's for the other, which drew the game tiny or stretched.
-    const ResizeCanvas = (screenPixelWidth: number, screenPixelHeight: number, cssWidth: number) => {
-        const pixelRatio = cssWidth > 0 ? screenPixelWidth / cssWidth : (window.devicePixelRatio || 1);
+    // One ratio (screen pixels per CSS pixel) sizes everything: the canvas's pixels and its size on the page. It comes
+    // from the screen-pixel width where the browser gives one, rather than window.devicePixelRatio, since the two can
+    // disagree (Firefox's mobile emulation gives the emulated phone's ratio for one and the monitor's for the other).
+    // The height uses the same ratio, so the canvas's pixels always stay square.
+    const ResizeCanvas = (cssWidth: number, cssHeight: number, screenPixelWidth?: number) => {
+        const pixelRatio = screenPixelWidth && cssWidth > 0 ? screenPixelWidth / cssWidth : (window.devicePixelRatio || 1);
+        const pixelWidth = Math.max(1, screenPixelWidth ?? Math.round(cssWidth * pixelRatio));
+        const pixelHeight = Math.max(1, Math.round(cssHeight * pixelRatio));
 
         measuredPixelRatio = pixelRatio;
 
-        // Shrinks the canvas back down to the container's size on the page
         if (Math.abs(pixelRatio - appliedPixelRatio) > 0.0001)
         {
             appliedPixelRatio = pixelRatio;
             game.scale.setZoom(1 / pixelRatio);
         }
 
-        game.scale.resize(Math.max(1, screenPixelWidth), Math.max(1, screenPixelHeight));
+        // Shrinks the canvas back down to the container's size on the page. Set here as well as by Phaser, which skips
+        // it when the zoom is exactly 1 (a pixel ratio of 1, as in some emulators) and would leave the size from before,
+        // stretching the game. Set before resizing: that's when Phaser measures the canvas on the page to turn clicks
+        // and drags into game positions, so it has to be the right size by then.
+        game.canvas.style.width = `${pixelWidth / pixelRatio}px`;
+        game.canvas.style.height = `${pixelHeight / pixelRatio}px`;
+
+        game.scale.resize(pixelWidth, pixelHeight);
     };
 
     const observer = new ResizeObserver(entries => {
         const entry = entries[entries.length - 1];
-        // The exact size in screen pixels, where the browser provides it
+        // The exact width in screen pixels, where the browser provides it
         const screenPixelSize = entry.devicePixelContentBoxSize?.[0];
-        const cssWidth = entry.contentRect.width;
 
-        if (screenPixelSize)
-        {
-            ResizeCanvas(screenPixelSize.inlineSize, screenPixelSize.blockSize, cssWidth);
-        }
-        else
-        {
-            const pixelRatio = window.devicePixelRatio || 1;
-
-            ResizeCanvas(Math.round(cssWidth * pixelRatio), Math.round(entry.contentRect.height * pixelRatio), cssWidth);
-        }
+        ResizeCanvas(entry.contentRect.width, entry.contentRect.height, screenPixelSize?.inlineSize);
     });
 
     const Observe = () => {
