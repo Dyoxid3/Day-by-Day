@@ -1,158 +1,143 @@
-# Phaser Vite TypeScript Template
+# Day by Day
 
-This is a Phaser project template that uses Vite for bundling. It supports hot-reloading for quick development workflow, includes TypeScript support and scripts to generate production-ready builds.
+**A cozy pixel-art island game about coming back.**
 
-**[This Template is also available as a JavaScript version.](https://github.com/phaserjs/template-vite)**
+Most habit apps punish you for failing: miss a day and your streak resets to zero, which is exactly when people quit.
+Day by Day is built for the day *after* you fail. You plan small goals in the real world, a kitten on your own little
+island reflects how you're doing, and coming back after time away is the most rewarding thing you can do.
 
-### Versions
+<p>
+  <img src="public/assets/PixelArt/Cat/star.png" alt="Star" width="32">
+  <img src="public/assets/PixelArt/Cat/pixielcoin.png" alt="Coin" width="32">
+  <img src="public/assets/PixelArt/Cat/backpack.png" alt="Backpack" width="32">
+  <img src="public/assets/PixelArt/Cat/tree.png" alt="Tree" width="64">
+  <img src="public/assets/PixelArt/Cat/streetlight.png" alt="Street light" width="64">
+  <img src="public/assets/PixelArt/Cat/house.png" alt="House" width="64">
+  <img src="public/assets/PixelArt/Cat/boat.png" alt="Boat" width="64">
+</p>
 
-This template has been updated for:
+![Phaser 4](https://img.shields.io/badge/Phaser-4-8a2be2)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6)
+![Vite](https://img.shields.io/badge/Vite-6-646cff)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-gentle%20helpers-4285f4)
+![Built at ShellHacks](https://img.shields.io/badge/Built%20at-ShellHacks-e8a33d)
 
-- [Phaser 4](https://github.com/phaserjs/phaser)
-- [Vite 6.3.1](https://github.com/vitejs/vite)
-- [TypeScript 5.7.2](https://github.com/microsoft/TypeScript)
+## How a day works
 
-![screenshot](screenshot.png)
+1. **Check in.** "How are you feeling today?" Good, Okay, Bad or Terrible. There is no wrong answer.
+2. **Plan gently.** Add a few tasks. The harder your day, the fewer prompts you see. A terrible day is simply a rest day,
+   with no planning at all.
+3. **Do one small thing.** Check tasks off to fill your progress ring and earn coins. A third of your day earns a star,
+   and finishing everything earns another star plus a handful of bonus coins.
+4. **The evening is a second chance.** If the day got away from you, the list shrinks to just what matters most, and
+   finishing that still counts in full.
 
-## Requirements
+Your kitten isn't you, and you don't control it. It lives on your island, wanders, runs over to see new props, and its
+mood follows how you said you're feeling.
 
-[Node.js](https://nodejs.org) is required to install dependencies and run scripts via `npm`.
+## Built for coming back
 
-## Available Commands
+- **Stars are never taken away.** There is no streak to lose. Shop items unlock by the stars you've *ever* earned, so
+  nothing gets locked again.
+- **Comebacks count up, never down.** Every return after time away is celebrated ("Comeback number 3, be proud of
+  yourself"), and after a longer break you can win back the stars from the days you missed.
+- **Letters to future you.** On a good day, write a few kind words. On a hard day, your cat hands one back. New players
+  start with a "fresh start" letter. Letters never leave your device.
+- **Gentle words only.** No guilt, no pressure, no emojis. Rest is only suggested when you say you're feeling terrible.
 
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install project dependencies |
-| `npm run dev` | Launch a development web server |
-| `npm run build` | Create a production build in the `dist` folder |
-| `npm run dev-nolog` | Launch a development web server without sending anonymous data (see "About log.js" below) |
-| `npm run build-nolog` | Create a production build in the `dist` folder without sending anonymous data (see "About log.js" below) |
+## Friends who lift you up
 
-## Writing Code
+- **Encourage a friend** with a message, and optionally coins or stars that they only receive once they reach a goal you
+  set (a third of their day by default), so the gift rewards action.
+- **Lanterns:** encouragement you receive glows as a lantern on your island until you tap it to read it.
+- **Visits:** sail your cat to a friend's island by boat. Visitors drop a few coins for whoever they're visiting.
+- Friends get a gentle note when you're having a hard day or falling behind, so they know to check in (without being
+  told why).
 
-After cloning the repo, run `npm install` from your project directory. Then, you can start the local development server by running `npm run dev`.
+## Gentle helpers (Google Gemini)
 
-The local development server runs on `http://localhost:8080` by default. Please see the Vite documentation if you wish to change this, or add SSL support.
+With a Gemini API key on the server, new tasks get a second look:
 
-Once the server is running you can edit any of the files in the `src` folder. Vite will automatically recompile your code and then reload the browser.
+- **Smaller steps** for tasks you rate hard, or that sound hard (like "run for an hour"). The steps always add up to
+  the *whole* task, their size follows your mood, and you tick which ones to keep. Short tasks like "study for 5
+  minutes" are left alone.
+- **Kinder names** for tasks worded harshly ("stop being lazy and study").
 
-## Template Project Structure
+The key stays on the server and never reaches the browser. The helpers are on by default and can be turned off in the
+profile, and the game works fully without them.
 
-We have provided a default project structure to get you started. This is as follows:
+## The island
 
-## Template Project Structure
+Hand-drawn pixel art, rendered pixel-perfect at any zoom, with a smooth camera. There's a day and night cycle, and
+street lights that glow after dark. Buy fences, trees, street lights and houses in the shop with the coins you earn,
+place them anywhere on the grass, and press and hold a prop to put it back in your inventory. It works on phones too,
+with drag, pinch-to-zoom and a swipeable bottom menu.
 
-We have provided a default project structure to get you started:
+## Getting started
 
-| Path                         | Description                                                |
-|------------------------------|------------------------------------------------------------|
-| `index.html`                 | A basic HTML page to contain the game.                     |
-| `public/assets`              | Game sprites, audio, etc. Served directly at runtime.      |
-| `public/style.css`           | Global layout styles.                                      |
-| `src/main.ts`                | Application bootstrap.                                     |
-| `src/game`                   | Folder containing the game code.                           |
-| `src/game/main.ts`           | Game entry point: configures and starts the game.          |
-| `src/game/scenes`            | Folder with all Phaser game scenes.                        | 
-
-
-## Handling Assets
-
-Vite supports loading assets via JavaScript module `import` statements.
-
-This template provides support for both embedding assets and also loading them from a static folder. To embed an asset, you can import it at the top of the JavaScript file you are using it in:
-
-```js
-import logoImg from './assets/logo.png'
-```
-
-To load static files such as audio files, videos, etc place them into the `public/assets` folder. Then you can use this path in the Loader calls within Phaser:
-
-```js
-preload ()
-{
-    //  This is an example of an imported bundled image.
-    //  Remember to import it at the top of this file
-    this.load.image('logo', logoImg);
-
-    //  This is an example of loading a static image
-    //  from the public/assets folder:
-    this.load.image('background', 'assets/bg.png');
-}
-```
-
-When you issue the `npm run build` command, all static assets are automatically copied to the `dist/assets` folder.
-
-## Deploying to Production
-
-After you run the `npm run build` command, your code will be built into a single bundle and saved to the `dist` folder, along with any other assets your project imported, or stored in the public assets folder.
-
-In order to deploy your game, you will need to upload *all* of the contents of the `dist` folder to a public facing web server.
-
-## Customizing the Template
-
-### Vite
-
-If you want to customize your build, such as adding plugin (i.e. for loading CSS or fonts), you can modify the `vite/config.*.mjs` file for cross-project changes, or you can modify and/or create new configuration files and target them in specific npm tasks inside of `package.json`. Please see the [Vite documentation](https://vitejs.dev/) for more information.
-
-## About log.js
-
-If you inspect our node scripts you will see there is a file called `log.js`. This file makes a single silent API call to a domain called `gryzor.co`. This domain is owned by Phaser Studio Inc. The domain name is a homage to one of our favorite retro games.
-
-We send the following 3 pieces of data to this API: The name of the template being used (vue, react, etc). If the build was 'dev' or 'prod' and finally the version of Phaser being used.
-
-At no point is any personal data collected or sent. We don't know about your project files, device, browser or anything else. Feel free to inspect the `log.js` file to confirm this.
-
-Why do we do this? Because being open source means we have no visible metrics about which of our templates are being used. We work hard to maintain a large and diverse set of templates for Phaser developers and this is our small anonymous way to determine if that work is actually paying off, or not. In short, it helps us ensure we're building the tools for you.
-
-However, if you don't want to send any data, you can use these commands instead:
-
-Dev:
+You need [Node.js](https://nodejs.org).
 
 ```bash
-npm run dev-nolog
+npm install
+npm run dev
 ```
 
-Build:
+Then open <http://localhost:8080>. The dev server also runs the online prototype (accounts, friends, encouragement and
+visits), which saves to `server/data/online-db.json`.
 
-```bash
-npm run build-nolog
+**Optional: Gemini.** Create a file named `.env.local` in the project folder (git ignores it) with:
+
+```
+GEMINI_API_KEY=your-key-here
 ```
 
-Or, to disable the log entirely, simply delete the file `log.js` and remove the call to it in the `scripts` section of `package.json`:
+Restart `npm run dev` after adding it.
 
-Before:
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server with hot reloading, at `http://localhost:8080` |
+| `npm run dev-phone` | The same, reachable from a phone on the same Wi-Fi |
+| `npm run build` | Production build in `dist` |
+| `npm run dev-nolog` / `npm run build-nolog` | The same, without the Phaser template's anonymous usage ping (see `log.js`) |
 
-```json
-"scripts": {
-    "dev": "node log.js dev & dev-template-script",
-    "build": "node log.js build & build-template-script"
-},
-```
+## Demo controls
 
-After:
+For showing everything on one screen, the development build has keyboard shortcuts. Press `1` to show the debug menu,
+which lists all of them. **Sam** is a ready-made demo friend (password `demo`), and signing up as `daniel` always
+starts a brand new account.
 
-```json
-"scripts": {
-    "dev": "dev-template-script",
-    "build": "build-template-script"
-},
-```
+| Key | Action | | Key | Action |
+| --- | --- | --- | --- | --- |
+| `H` | Skip to tomorrow morning | | `N` | Sam leaves a lantern |
+| `J` | Go to night | | `M` | Sam encourages you |
+| `K` | Be away for 3 days | | `V` | Sam visits your island |
+| `Y` | Get 50 coins | | `T` | Sam has a tough day |
+| `U` | Earn 5 stars | | `1` | Show or hide the debug menu |
 
-Either of these will stop `log.js` from running. If you do decide to do this, please could you at least join our Discord and tell us which template you're using! Or send us a quick email. Either will be super-helpful, thank you.
+[ONLINE_PLAYTEST.md](ONLINE_PLAYTEST.md) covers playing with two windows, on a phone, and resetting the demo.
 
-## Join the Phaser Community!
+## Project structure
 
-We love to see what developers like you create with Phaser! It really motivates us to keep improving. So please join our community and show-off your work 😄
+| Folder | What's inside |
+| --- | --- |
+| `src/game/scenes` | The island scene, and the overlay that draws lamp light at night |
+| `src/game/state` | Days, check-ins, tasks, stars, comebacks, letters, lanterns and saving |
+| `src/game/systems` | Camera, pixel snapping, day and night lighting, prop placement, boats and visitors |
+| `src/game/data` | Tunable settings: the shop, the day's rules, and every gentle message the game says |
+| `src/ui` | The HTML interface: to-do list, progress ring, shop, profile, check-in cards and notices |
+| `src/online` | Talking to the online prototype and the Gemini helpers |
+| `src/audio` | Sound effects |
+| `server` | The online prototype and the Gemini proxy, both running inside the Vite dev server |
+| `public/assets` | Pixel art, sounds and the pixel font |
 
-**Visit:** The [Phaser website](https://phaser.io) and follow on [Phaser Twitter](https://twitter.com/phaser_)<br />
-**Play:** Some of the amazing games [#madewithphaser](https://twitter.com/search?q=%23madewithphaser&src=typed_query&f=live)<br />
-**Learn:** [API Docs](https://newdocs.phaser.io), [Support Forum](https://phaser.discourse.group/) and [StackOverflow](https://stackoverflow.com/questions/tagged/phaser-framework)<br />
-**Discord:** Join us on [Discord](https://discord.gg/phaser)<br />
-**Code:** 2000+ [Examples](https://labs.phaser.io)<br />
-**Read:** The [Phaser World](https://phaser.io/community/newsletter) Newsletter<br />
+## Privacy
 
-Created by [Phaser Studio](mailto:support@phaser.io). Powered by coffee, anime, pixels and love.
+Progress is saved in your browser per account; playing as a guest keeps nothing. With the gentle helpers on, only task
+names, how hard they feel and how you're feeling today are sent to Google. Letters to future you are never sent
+anywhere.
 
-The Phaser logo and characters are &copy; 2011 - 2025 Phaser Studio Inc.
+## Credits
 
-All rights reserved.
+Made at ShellHacks with [Phaser 4](https://phaser.io), TypeScript and Vite. The pixel art is hand-drawn for this game.
+Started from the [Phaser Vite TypeScript template](https://github.com/phaserjs/template-vite-ts), MIT
+licensed (see [LICENSE](LICENSE)).

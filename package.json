@@ -1,18 +1,18 @@
 {
-  "name": "template-vite-ts",
-  "description": "A Phaser 3 TypeScript template using Vite.",
+  "name": "day-by-day",
+  "description": "A cozy pixel-art island game about coming back: gentle daily goals, a kitten who reflects how you are doing, and friends who lift you up.",
   "version": "1.4.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/phaserjs/template-vite-ts.git"
+    "url": "git+https://github.com/Dyoxid3/Day-by-Day.git"
   },
   "author": "Phaser Studio <support@phaser.io> (https://phaser.io/)",
   "license": "MIT",
   "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
   "bugs": {
-    "url": "https://github.com/phaserjs/template-vite-ts/issues"
+    "url": "https://github.com/Dyoxid3/Day-by-Day/issues"
   },
-  "homepage": "https://github.com/phaserjs/template-vite-ts#readme",
+  "homepage": "https://github.com/Dyoxid3/Day-by-Day#readme",
   "scripts": {
     "dev": "node log.js dev & vite --config vite/config.dev.mjs",
     "build": "node log.js build & vite build --config vite/config.prod.mjs",
